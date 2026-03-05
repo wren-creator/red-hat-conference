@@ -1,0 +1,13 @@
+prompt=$(printf 'Convert the following Bash script to Python 3.
+- Use argparse for CLI flags
+- Use subprocess.run() for shell commands
+- Preserve comments and structure
+- Explain assumptions in brief comments
+- Return only Python code
+
+```bash
+%s
+```' "$(cat myscript.sh)")
+
+# Pick a strong code model you already have pulled, e.g., qwen2.5-coder, codellama, llama3.1:70b, deepseek-coder, etc.
+ollama run qwen2.5-coder:latest "$prompt" > myscript.py
