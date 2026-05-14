@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legacy Code Modernizer — Rosetta Stone</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #eeede9;
+    --bg-info: #e6f1fb;
+    --bg-success: #eaf3de;
+    --bg-warn: #faeeda;
+    --bg-danger: #fcebeb;
+    --text: #1a1a18;
+    --text2: #5f5e5a;
+    --text3: #888780;
+    --text-info: #0c447c;
+    --text-success: #27500a;
+    --text-warn: #633806;
+    --text-danger: #791f1f;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --mono: 'Menlo','Consolas','Monaco',monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg2: #252523;
+      --bg3: #2e2e2b;
+      --bg-info: #0c2a45;
+      --bg-success: #0f2a06;
+      --bg-warn: #2d1f06;
+      --bg-danger: #2d0f0f;
+      --text: #f0ede8;
+      --text2: #a8a69e;
+      --text3: #6e6d68;
+      --text-info: #85b7eb;
+      --text-success: #97c459;
+      --text-warn: #ef9f27;
+      --text-danger: #f09595;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.2);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg3); color: var(--text); min-height: 100vh; }
+  .shell { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* Header */
+  .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
+  .app-title { display: flex; align-items: center; gap: 10px; }
+  .app-title h1 { font-size: 20px; font-weight: 600; color: var(--text); }
+  .app-title svg { width: 26px; height: 26px; color: var(--text2); flex-shrink: 0; }
+  .app-sub { font-size: 12px; color: var(--text3); margin-bottom: 1.5rem; padding-left: 36px; }
+  .header-actions { display: flex; gap: 8px; }
+
+  /* Cards */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+
+  /* Settings panel */
+  .settings-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+  .settings-panel.open { display: block; }
+  .settings-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media(max-width:600px){ .settings-grid { grid-template-columns: 1fr; } }
+  .settings-section { border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+  .settings-section h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 0.75rem; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 0.75rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; color: var(--text2); }
+  .field input, .field select { width: 100%; padding: 7px 10px; font-size: 13px; font-family: var(--sans); background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--border2); }
+  .field input[type=password] { font-family: var(--mono); letter-spacing: 0.1em; }
+  .provider-toggle { display: flex; border: 0.5px solid var(--border2); border-radius: var(--radius); overflow: hidden; margin-bottom: 0.75rem; }
+  .prov-btn { flex: 1; padding: 7px 10px; font-size: 12px; background: none; border: none; cursor: pointer; font-family: var(--sans); color: var(--text2); transition: background 0.12s; }
+  .prov-btn.active { background: var(--bg2); color: var(--text); font-weight: 600; }
+  .prov-btn:not(:last-child) { border-right: 0.5px solid var(--border2); }
+  .key-row { display: flex; gap: 6px; }
+  .key-row input { flex: 1; }
+  .settings-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 8px; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .conn-dot.ok { background: #1D9E75; }
+  .conn-dot.err { background: #E24B4A; }
+
+  /* Main controls */
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+  @media(max-width:500px){ .row2 { grid-template-columns: 1fr; } }
+  .sel-group { display: flex; flex-direction: column; gap: 5px; }
+  .sel-group label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); }
+  select { width: 100%; padding: 8px 10px; font-size: 13px; font-family: var(--sans); background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; cursor: pointer; }
+  select:focus { border-color: var(--border2); }
+
+  /* Mode toggle */
+  .mode-toggle { display: flex; border: 0.5px solid var(--border2); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+  .mode-btn { flex: 1; padding: 9px 12px; font-size: 13px; background: none; border: none; cursor: pointer; font-family: var(--sans); color: var(--text2); transition: background 0.12s; }
+  .mode-btn.active { background: var(--bg2); color: var(--text); font-weight: 600; }
+  .mode-btn:not(:last-child) { border-right: 0.5px solid var(--border2); }
+
+  /* Section label */
+  .sec-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .sec-action { font-size: 12px; color: var(--text-info); background: none; border: none; cursor: pointer; font-family: var(--sans); padding: 0; }
+  .sec-action:hover { text-decoration: underline; }
+
+  /* Code textarea */
+  textarea { width: 100%; height: 200px; font-family: var(--mono); font-size: 12.5px; resize: vertical; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; color: var(--text); line-height: 1.6; outline: none; margin-bottom: 1rem; }
+  textarea:focus { border-color: var(--border2); }
+
+  /* Drop zone */
+  .drop-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 28px 20px; text-align: center; margin-bottom: 10px; cursor: pointer; transition: background 0.12s; }
+  .drop-zone:hover, .drop-zone.drag-over { background: var(--bg2); }
+  .drop-zone .dz-icon { font-size: 28px; color: var(--text3); margin-bottom: 6px; }
+  .drop-zone p { font-size: 14px; color: var(--text2); }
+  .drop-zone .sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .btn { padding: 8px 14px; font-size: 13px; font-family: var(--sans); background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.12s; }
+  .btn:hover { background: var(--bg2); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-full { width: 100%; justify-content: center; padding: 11px; font-size: 14px; font-weight: 600; }
+  .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-primary:hover { opacity: 0.88; background: var(--text); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* Queue */
+  .queue-wrap { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; max-height: 180px; overflow-y: auto; }
+  .queue-empty { padding: 14px; font-size: 13px; color: var(--text3); text-align: center; }
+  .queue-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 0.5px solid var(--border); font-size: 12.5px; }
+  .queue-item:last-child { border-bottom: none; }
+  .fname { flex: 1; font-family: var(--mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .qi-badge { font-size: 11px; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
+  .st-pending { background: var(--bg3); color: var(--text3); border: 0.5px solid var(--border); }
+  .st-running { background: var(--bg-info); color: var(--text-info); }
+  .st-done { background: var(--bg-success); color: var(--text-success); }
+  .st-warn { background: var(--bg-warn); color: var(--text-warn); }
+  .st-error { background: var(--bg-danger); color: var(--text-danger); }
+  .qi-remove { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 18px; line-height: 1; padding: 0 2px; }
+  .qi-remove:hover { color: var(--text-danger); }
+
+  /* Out dir */
+  .out-dir-row { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; }
+  .out-dir-name { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+  /* Complexity bar */
+  .complexity-wrap { margin: 10px 0 1rem; display: none; }
+  .cb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .cb-label { font-size: 12px; color: var(--text2); }
+  .cb-score { font-size: 13px; font-weight: 600; }
+  .cb-track { height: 7px; background: var(--bg3); border-radius: 100px; overflow: hidden; border: 0.5px solid var(--border); }
+  .cb-fill { height: 100%; border-radius: 100px; transition: width 0.5s ease; }
+  .fill-green { background: #1D9E75; }
+  .fill-amber { background: #BA7517; }
+  .fill-red { background: #E24B4A; }
+
+  /* Warning banner */
+  .warn-banner { border-radius: var(--radius); padding: 10px 14px; margin-bottom: 1rem; font-size: 13px; line-height: 1.6; display: none; }
+  .warn-banner.show { display: block; }
+  .warn-amber { background: var(--bg-warn); color: var(--text-warn); border: 0.5px solid #EF9F27; }
+  .warn-red { background: var(--bg-danger); color: var(--text-danger); border: 0.5px solid #F09595; }
+  .warn-banner strong { font-weight: 600; display: block; margin-bottom: 3px; }
+
+  /* Status */
+  .status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); margin-top: 8px; min-height: 20px; }
+  .spinner { width: 13px; height: 13px; border: 1.5px solid var(--border2); border-top-color: var(--text2); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-top: 1.5rem; }
+  .tab { font-size: 13px; padding: 9px 14px; cursor: pointer; color: var(--text2); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--sans); white-space: nowrap; transition: color 0.12s; }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  .tab:hover:not(.active) { color: var(--text); }
+  .tab-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 5px; vertical-align: middle; }
+  .dot-done { background: #1D9E75; }
+  .dot-warn { background: #BA7517; }
+  .dot-run { background: #378ADD; }
+
+  /* Output boxes */
+  .out-box { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 46px 14px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--text); min-height: 160px; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; position: relative; margin-top: 1px; }
+  .out-box.prose { font-family: var(--sans); font-size: 13.5px; line-height: 1.8; }
+  .placeholder { color: var(--text3); font-family: var(--sans); font-size: 13px; }
+  .out-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; }
+
+  /* Summary */
+  .summary-panel { display: none; margin-top: 1.5rem; }
+  .summary-panel.show { display: block; }
+  .summary-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  @media(max-width:500px){ .stat-grid { grid-template-columns: 1fr 1fr; } }
+  .stat-card { background: var(--bg2); border-radius: var(--radius); padding: 14px; text-align: center; border: 0.5px solid var(--border); }
+  .stat-val { font-size: 26px; font-weight: 700; color: var(--text); }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .summary-table th { text-align: left; padding: 7px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text2); border-bottom: 0.5px solid var(--border); }
+  .summary-table td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); vertical-align: top; }
+  .summary-table tr:last-child td { border-bottom: none; }
+  .note-cell { font-size: 11.5px; color: var(--text2); }
+  .risk-pill { font-size: 11px; padding: 2px 9px; border-radius: 100px; display: inline-block; }
+  .risk-clean { background: var(--bg-success); color: var(--text-success); }
+  .risk-partial { background: var(--bg-warn); color: var(--text-warn); }
+  .risk-manual { background: var(--bg-danger); color: var(--text-danger); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+
+  /* Utility */
+  .hidden { display: none !important; }
+  .mt8 { margin-top: 8px; }
+  .gap8 { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="app-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h3m13 0h-8M4 12h8m5 0h-1M4 17h3m13 0h-8"/><rect x="2" y="4" width="20" height="16" rx="2"/>
+      </svg>
+      <h1>Legacy Code Modernizer</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-sm" id="settings-toggle" onclick="toggleSettings()" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </div>
+  <div class="app-sub">Rosetta Stone &nbsp;·&nbsp; translate legacy scripts into modern automation</div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-title">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      AI Provider Settings
+    </div>
+
+    <div class="settings-grid">
+      <!-- Provider selection -->
+      <div class="settings-section">
+        <h3>Provider</h3>
+        <div class="provider-toggle">
+          <button class="prov-btn active" id="prov-anthropic" onclick="setProvider('anthropic')">Anthropic API</button>
+          <button class="prov-btn" id="prov-ollama" onclick="setProvider('ollama')">Ollama (local)</button>
+        </div>
+
+        <!-- Anthropic fields -->
+        <div id="anthropic-fields">
+          <div class="field">
+            <label>API Key</label>
+            <div class="key-row">
+              <input type="password" id="api-key" placeholder="sk-ant-api03-…" autocomplete="off" oninput="onKeyInput()">
+              <button class="btn btn-sm" onclick="toggleKeyVis()">Show</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Model</label>
+            <select id="anthropic-model">
+              <option value="claude-sonnet-4-20250514">claude-sonnet-4 (recommended)</option>
+              <option value="claude-opus-4-20250514">claude-opus-4 (most capable)</option>
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (fastest)</option>
+            </select>
+          </div>
+          <div class="gap8 mt8">
+            <button class="btn btn-sm" onclick="saveKey()">&#128274; Key storage info</button>
+            <button class="btn btn-sm" onclick="clearKey()" style="color:var(--text-danger)">Clear key from memory</button>
+          </div>
+          <p class="settings-note">&#128274; Your API key is held <strong>in memory only</strong> and is never written to disk, localStorage, or any server. It is automatically cleared when you close this tab.</p>
+        </div>
+
+        <!-- Ollama fields -->
+        <div id="ollama-fields" class="hidden">
+          <div class="field">
+            <label>Ollama base URL</label>
+            <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+          </div>
+          <div class="field">
+            <label>Model name</label>
+            <input type="text" id="ollama-model" value="qwen2.5-coder" placeholder="e.g. qwen2.5-coder, llama3.1:70b">
+          </div>
+          <p class="settings-note">Ollama must be running locally with CORS enabled. Run: <code style="font-family:var(--mono);font-size:11px;">OLLAMA_ORIGINS=* ollama serve</code></p>
+        </div>
+
+        <div class="conn-status" id="conn-status">
+          <div class="conn-dot" id="conn-dot"></div>
+          <span id="conn-label">Not tested</span>
+          <button class="btn btn-sm" onclick="testConnection()" style="margin-left:auto;">Test connection</button>
+        </div>
+      </div>
+
+      <!-- Advanced -->
+      <div class="settings-section">
+        <h3>Generation options</h3>
+        <div class="field">
+          <label>Max tokens per request</label>
+          <select id="max-tokens">
+            <option value="1000">1000 (default)</option>
+            <option value="2000">2000</option>
+            <option value="4000">4000 (large files)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Temperature</label>
+          <select id="temperature">
+            <option value="0.1">0.1 — deterministic (recommended)</option>
+            <option value="0.3">0.3 — slight variation</option>
+            <option value="0.7">0.7 — creative</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Skip complexity assessment</label>
+          <select id="skip-complexity">
+            <option value="false">No — always assess (recommended)</option>
+            <option value="true">Yes — faster, no pre-check</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Batch delay between files</label>
+          <select id="batch-delay">
+            <option value="0">None</option>
+            <option value="1000">1 second</option>
+            <option value="2000">2 seconds (rate limit safe)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main card -->
+  <div class="card">
+    <div class="row2">
+      <div class="sel-group">
+        <label>Source language</label>
+        <select id="src-lang" onchange="onSrcChange()">
+          <option value="bash">Bash / Shell</option>
+          <option value="perl">Perl</option>
+          <option value="cobol">COBOL</option>
+          <option value="fortran">Fortran</option>
+          <option value="awk">AWK</option>
+          <option value="tcl">Tcl</option>
+          <option value="csh">C Shell (csh)</option>
+        </select>
+      </div>
+      <div class="sel-group">
+        <label>Target language</label>
+        <select id="tgt-lang">
+          <option value="ansible">Ansible YAML Playbook</option>
+          <option value="python3">Python 3</option>
+          <option value="terraform">Terraform HCL</option>
+          <option value="go">Go</option>
+          <option value="powershell">PowerShell (modern)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-single" onclick="setMode('single')">
+        &#128196; Single file / paste
+      </button>
+      <button class="mode-btn" id="btn-batch" onclick="setMode('batch')">
+        &#128193; Directory / batch
+      </button>
+    </div>
+
+    <!-- Single mode -->
+    <div id="single-panel">
+      <div class="sec-label">
+        <span>Legacy source code</span>
+        <button class="sec-action" onclick="loadSample()">load sample &#8594;</button>
+      </div>
+      <textarea id="code-input" placeholder="Paste your legacy script here&#8230;"></textarea>
+    </div>
+
+    <!-- Batch mode -->
+    <div id="batch-panel" class="hidden">
+      <div class="btn-row">
+        <button class="btn" style="flex:1;" onclick="pickDirectory()">&#128193; Pick directory&#8230;</button>
+        <button class="btn" style="flex:1;" onclick="document.getElementById('fp').click()">&#128196; Pick files&#8230;</button>
+      </div>
+      <input type="file" id="fp" multiple
+        accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh"
+        style="display:none;" onchange="handleFilePicker(this)">
+
+      <div class="drop-zone" id="drop-zone"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <div class="dz-icon">&#8613;</div>
+        <p>Drop files or a folder here</p>
+        <p class="sub">.sh .bash .pl .cob .f .awk .tcl .csh and more</p>
+      </div>
+
+      <div class="sec-label" style="margin-bottom:6px;">
+        <span>Output directory</span>
+        <span class="out-dir-name" id="out-dir-name">not set</span>
+      </div>
+      <div class="out-dir-row">
+        <button class="btn" style="flex:1;" onclick="pickOutputDir()">&#128193; Choose output directory&#8230;</button>
+      </div>
+
+      <div class="sec-label">
+        File queue <span id="queue-count" style="color:var(--text3);font-weight:400;margin-left:4px;">0 files</span>
+        <button class="sec-action" onclick="clearQueue()">clear all</button>
+      </div>
+      <div class="queue-wrap" id="queue-list">
+        <div class="queue-empty">No files added yet</div>
+      </div>
+    </div>
+
+    <!-- Complexity -->
+    <div class="complexity-wrap" id="complexity-wrap">
+      <div class="cb-header">
+        <span class="cb-label">Conversion complexity</span>
+        <span class="cb-score" id="cb-score-label"></span>
+      </div>
+      <div class="cb-track"><div class="cb-fill" id="cb-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Warning -->
+    <div class="warn-banner" id="warn-banner"></div>
+
+    <button class="btn btn-full btn-primary" id="run-btn" onclick="runAll()">
+      &#9654; <span id="run-label">Generate documentation, tests &amp; converted code</span>
+    </button>
+    <div class="status-row" id="status-row"></div>
+  </div>
+
+  <!-- Output tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('docs')" id="tab-docs">&#128196; Documentation<span id="ind-docs"></span></button>
+    <button class="tab" onclick="switchTab('tests')" id="tab-tests">&#9878; Test script<span id="ind-tests"></span></button>
+    <button class="tab" onclick="switchTab('converted')" id="tab-converted">&#60;/&#62; Converted code<span id="ind-converted"></span></button>
+  </div>
+
+  <div id="panel-docs">
+    <div class="out-box prose" id="out-docs"><span class="placeholder">Documentation will appear here after generation.</span></div>
+  </div>
+  <div id="panel-tests" class="hidden">
+    <div class="out-box" id="out-tests"><span class="placeholder">Test script will appear here after generation.</span></div>
+  </div>
+  <div id="panel-converted" class="hidden">
+    <div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div>
+  </div>
+
+  <!-- Batch summary -->
+  <div class="summary-panel card" id="summary-panel">
+    <div class="summary-title">&#128202; Batch results summary</div>
+    <div class="stat-grid" id="stat-grid"></div>
+    <div class="sec-label" style="margin-bottom:8px;">File-by-file breakdown</div>
+    <div style="overflow-x:auto;">
+      <table class="summary-table">
+        <thead><tr><th>File</th><th>Complexity</th><th>Conversion</th><th>Issues found</th></tr></thead>
+        <tbody id="summary-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem;">
+      <button class="btn btn-sm" onclick="exportSummaryCSV()">&#8615; Export summary CSV</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────
+const SAMPLES = {
+  bash:`#!/bin/bash\n# backup.sh — backs up /var/data to /mnt/backup with timestamp\nset -euo pipefail\nSRC="/var/data"\nDEST="/mnt/backup/$(date +%Y%m%d_%H%M%S)"\nmkdir -p "$DEST"\ncp -r "$SRC/"* "$DEST/"\nfind "$DEST" -name "*.log" -mtime +30 -delete\necho "Backup complete: $DEST"`,
+  perl:`#!/usr/bin/perl\n# parse_logs.pl — counts 5xx errors per IP in Apache log\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
+  cobol:`       IDENTIFICATION DIVISION.\n       PROGRAM-ID. CALC-TAX.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-INCOME PIC 9(7)V99.\n       01 WS-TAX    PIC 9(7)V99.\n       PROCEDURE DIVISION.\n           MOVE 55000.00 TO WS-INCOME\n           COMPUTE WS-TAX = WS-INCOME * 0.22\n           DISPLAY "Tax: " WS-TAX\n           STOP RUN.`,
+  awk:`#!/usr/bin/awk -f\n# sum_col.awk — sums column 3 grouped by column 1\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
+  fortran:`      PROGRAM STATS\n      IMPLICIT NONE\n      INTEGER I,N\n      REAL X(100),SUMX,MEAN\n      N=5\n      DATA X /3.0,7.0,5.0,9.0,1.0,95*0.0/\n      SUMX=0.0\n      DO 10 I=1,N\n        SUMX=SUMX+X(I)\n   10 CONTINUE\n      MEAN=SUMX/N\n      WRITE(*,*) 'Mean =',MEAN\n      END`,
+  tcl:`#!/usr/bin/tclsh\nset hosts {192.168.1.1 192.168.1.2 10.0.0.1}\nforeach host $hosts {\n  set r [catch {exec ping -c 1 -W 1 $host} out]\n  puts "$host: [expr {$r==0?{UP}:{DOWN}}]"\n}`,
+  csh:`#!/bin/csh\nset APP="myapp"\nset DIR="/opt/$APP"\nif(-d $DIR) then\n  /etc/init.d/$APP stop\nendif\ncp -r ./dist/* $DIR/\n/etc/init.d/$APP start`
+};
+const TGT_LABELS={ansible:'Ansible YAML',python3:'Python 3',terraform:'Terraform HCL',go:'Go',powershell:'PowerShell'};
+const TGT_EXT={ansible:'yml',python3:'py',terraform:'tf',go:'go',powershell:'ps1'};
+const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh'];
+
+let mode='single', queue=[], outputDirHandle=null, batchResults=[];
+let provider='anthropic';
+
+// ─── Init ─────────────────────────────────────────────────────────
+// API key is NEVER persisted — in-memory only, cleared on close.
+// Non-sensitive preferences (provider, model names, Ollama URL) are saved.
+window.addEventListener('DOMContentLoaded', () => {
+  const savedProv = localStorage.getItem('rs_provider') || 'anthropic';
+  setProvider(savedProv);
+  const savedModel = localStorage.getItem('rs_anthropic_model');
+  if (savedModel) document.getElementById('anthropic-model').value = savedModel;
+  const savedOllamaUrl = localStorage.getItem('rs_ollama_url');
+  if (savedOllamaUrl) document.getElementById('ollama-url').value = savedOllamaUrl;
+  const savedOllamaModel = localStorage.getItem('rs_ollama_model');
+  if (savedOllamaModel) document.getElementById('ollama-model').value = savedOllamaModel;
+  loadSample();
+});
+
+// ─── Settings ─────────────────────────────────────────────────────
+function toggleSettings() {
+  document.getElementById('settings-panel').classList.toggle('open');
+}
+function setProvider(p) {
+  provider = p;
+  localStorage.setItem('rs_provider', p);
+  document.getElementById('prov-anthropic').classList.toggle('active', p==='anthropic');
+  document.getElementById('prov-ollama').classList.toggle('active', p==='ollama');
+  document.getElementById('anthropic-fields').classList.toggle('hidden', p!=='anthropic');
+  document.getElementById('ollama-fields').classList.toggle('hidden', p!=='ollama');
+  resetConnStatus();
+}
+function savePrefs() {
+  localStorage.setItem('rs_anthropic_model', document.getElementById('anthropic-model').value);
+  localStorage.setItem('rs_ollama_url', document.getElementById('ollama-url').value);
+  localStorage.setItem('rs_ollama_model', document.getElementById('ollama-model').value);
+}
+function onKeyInput() { resetConnStatus(); }
+function resetConnStatus() {
+  document.getElementById('conn-dot').className = 'conn-dot';
+  document.getElementById('conn-label').textContent = 'Not tested';
+}
+function toggleKeyVis() {
+  const inp = document.getElementById('api-key');
+  const btn = event.target;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
+}
+function saveKey() {
+  alert('Your API key is held in memory only and will not be saved to disk. It will be cleared when you close this tab — this is by design for security.');
+}
+function clearKey() {
+  document.getElementById('api-key').value = '';
+  resetConnStatus();
+  showConnStatus('Key cleared from memory.', false, false);
+}
+function showConnStatus(msg, ok, err) {
+  const dot = document.getElementById('conn-dot');
+  dot.className = 'conn-dot' + (ok ? ' ok' : err ? ' err' : '');
+  document.getElementById('conn-label').textContent = msg;
+}
+async function testConnection() {
+  showConnStatus('Testing…', false, false);
+  savePrefs();
+  try {
+    const r = await callAI('You are a test assistant.', 'Reply with only the word: connected', ()=>{});
+    if (r && r.toLowerCase().includes('connected')) {
+      showConnStatus('Connected successfully', true, false);
+    } else {
+      showConnStatus('Got response but unexpected content', false, false);
+    }
+  } catch(e) {
+    showConnStatus('Failed: ' + e.message, false, true);
+  }
+}
+
+// ─── AI call (Anthropic or Ollama) ────────────────────────────────
+async function callAI(system, user, onChunk) {
+  if (provider === 'anthropic') {
+    return callAnthropic(system, user, onChunk);
+  } else {
+    return callOllama(system, user, onChunk);
+  }
+}
+
+async function callAnthropic(system, user, onChunk) {
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) throw new Error('No Anthropic API key set. Open Settings and enter your key.');
+  const model = document.getElementById('anthropic-model').value;
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const temp = parseFloat(document.getElementById('temperature').value);
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({ model, max_tokens: maxTok, stream: true, temperature: temp, system, messages: [{ role:'user', content: user }] })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(()=>({ error:{ message: resp.statusText } }));
+    throw new Error(err?.error?.message || 'Anthropic API error ' + resp.status);
+  }
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf='', full='';
+  while(true) {
+    const {done, value} = await reader.read(); if(done) break;
+    buf += dec.decode(value, {stream:true});
+    const lines = buf.split('\n'); buf = lines.pop();
+    for(const line of lines) {
+      if(!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim(); if(d==='[DONE]') continue;
+      try { const delta = JSON.parse(d)?.delta?.text||''; if(delta){full+=delta; onChunk(full);} } catch{}
+    }
+  }
+  return full;
+}
+
+async function callOllama(system, user, onChunk) {
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
+  const model = document.getElementById('ollama-model').value.trim();
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const temp = parseFloat(document.getElementById('temperature').value);
+
+  const resp = await fetch(base + '/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ollama' },
+    body: JSON.stringify({
+      model, stream: true, temperature: temp,
+      max_tokens: maxTok,
+      messages: [{ role:'system', content: system }, { role:'user', content: user }]
+    })
+  });
+
+  if (!resp.ok) throw new Error('Ollama error ' + resp.status + ' — is Ollama running with CORS enabled?');
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf='', full='';
+  while(true) {
+    const {done, value} = await reader.read(); if(done) break;
+    buf += dec.decode(value, {stream:true});
+    const lines = buf.split('\n'); buf = lines.pop();
+    for(const line of lines) {
+      if(!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim(); if(d==='[DONE]') continue;
+      try { const delta = JSON.parse(d)?.choices?.[0]?.delta?.content||''; if(delta){full+=delta; onChunk(full);} } catch{}
+    }
+  }
+  return full;
+}
+
+// ─── Mode / UI ────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-single').classList.toggle('active', m==='single');
+  document.getElementById('btn-batch').classList.toggle('active', m==='batch');
+  document.getElementById('single-panel').classList.toggle('hidden', m!=='single');
+  document.getElementById('batch-panel').classList.toggle('hidden', m!=='batch');
+  document.getElementById('run-label').textContent = m==='single' ? 'Generate documentation, tests & converted code' : 'Process queue';
+  document.getElementById('summary-panel').classList.remove('show');
+}
+function loadSample() { document.getElementById('code-input').value = SAMPLES[document.getElementById('src-lang').value] || SAMPLES.bash; }
+function onSrcChange() { const v=document.getElementById('code-input').value.trim(); if(!v||Object.values(SAMPLES).includes(v)) loadSample(); }
+function isLegacy(name) { return LEGACY_EXTS.includes(name.split('.').pop().toLowerCase()); }
+function switchTab(tab) {
+  ['docs','tests','converted'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('panel-'+t).classList.toggle('hidden', t!==tab);
+  });
+}
+function setDot(tab, cls) { document.getElementById('ind-'+tab).innerHTML = cls ? `<span class="tab-dot ${cls}"></span>` : ''; }
+function showStatus(msg, spinning) {
+  const r = document.getElementById('status-row');
+  r.innerHTML = msg ? (spinning ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`) : '';
+}
+function setOutput(tab, text, prose) {
+  const el = document.getElementById('out-'+tab);
+  el.className = 'out-box' + (prose ? ' prose' : '');
+  if(!text) { el.innerHTML=`<span class="placeholder">${tab==='docs'?'Documentation':tab==='tests'?'Test script':'Converted code'} will appear here.</span>`; return; }
+  el.textContent = text;
+  const acts = document.createElement('div'); acts.className='out-actions';
+  const cp = document.createElement('button'); cp.className='btn btn-sm'; cp.textContent='Copy';
+  cp.onclick = () => { navigator.clipboard.writeText(text).then(()=>{ cp.textContent='Copied!'; setTimeout(()=>cp.textContent='Copy',1500); }); };
+  acts.appendChild(cp);
+  if(text.length > 100) {
+    const dl = document.createElement('button'); dl.className='btn btn-sm'; dl.textContent='Download';
+    const exts = {docs:'txt', tests:'sh', converted: TGT_EXT[document.getElementById('tgt-lang').value]||'txt'};
+    dl.onclick = () => downloadText(text, 'rosetta_'+tab+'.'+exts[tab]);
+    acts.appendChild(dl);
+  }
+  el.style.position='relative'; el.insertBefore(acts, el.firstChild);
+}
+function downloadText(text, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
+  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+function showComplexity(score, label, level) {
+  document.getElementById('complexity-wrap').style.display='';
+  document.getElementById('cb-score-label').textContent = label;
+  const fill = document.getElementById('cb-fill');
+  fill.style.width = score+'%';
+  fill.className = 'cb-fill '+({low:'fill-green',medium:'fill-amber',high:'fill-red'}[level]);
+}
+function showWarning(level, issues) {
+  const el = document.getElementById('warn-banner');
+  if(!issues||!issues.length){ el.className='warn-banner'; return; }
+  el.className = 'warn-banner show '+(level==='high'?'warn-red':'warn-amber');
+  const title = level==='high' ? '&#9888; Manual intervention required' : '&#9888; Partial conversion — review recommended';
+  el.innerHTML = `<strong>${title}</strong>${issues.map(i=>`&bull; ${i}`).join('<br>')}`;
+}
+
+// ─── Queue / File I/O ─────────────────────────────────────────────
+function addToQueue(name, content) {
+  if(queue.find(f=>f.name===name)) return;
+  queue.push({name, content, status:'pending', result:null});
+  renderQueue();
+}
+function removeFromQueue(i) { queue.splice(i,1); renderQueue(); }
+function clearQueue() { queue=[]; renderQueue(); }
+function renderQueue() {
+  const list = document.getElementById('queue-list');
+  document.getElementById('queue-count').textContent = queue.length+' file'+(queue.length===1?'':'s');
+  if(!queue.length){ list.innerHTML='<div class="queue-empty">No files added yet</div>'; return; }
+  list.innerHTML='';
+  const stMap={pending:'st-pending',running:'st-running',done:'st-done',warn:'st-warn',error:'st-error'};
+  const stTxt={pending:'queued',running:'processing…',done:'done',warn:'needs review',error:'error'};
+  queue.forEach((f,i)=>{
+    const row=document.createElement('div'); row.className='queue-item';
+    row.innerHTML=`<span class="fname" title="${f.name}">${f.name}</span>`+
+      `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>`+
+      (f.status==='pending'?`<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>`:'');
+    list.appendChild(row);
+  });
+}
+async function pickDirectory() {
+  try {
+    const dh = await window.showDirectoryPicker({mode:'read'});
+    let c=0;
+    for await(const e of dh.values()) {
+      if(e.kind==='file'&&isLegacy(e.name)){ const f=await e.getFile(); addToQueue(f.name,await f.text()); c++; }
+    }
+    if(!c) showStatus('No recognized legacy files found in that directory.',false);
+  } catch(e){ if(e.name!=='AbortError') showStatus('Directory access failed: '+e.message,false); }
+}
+async function handleFilePicker(input) {
+  for(const f of input.files) if(isLegacy(f.name)) addToQueue(f.name,await f.text());
+  input.value='';
+}
+async function handleDrop(e) {
+  e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over');
+  for(const item of [...e.dataTransfer.items]) {
+    if(item.kind!=='file') continue;
+    if(item.getAsFileSystemHandle){
+      const h=await item.getAsFileSystemHandle();
+      if(h.kind==='directory'){ for await(const en of h.values()) if(en.kind==='file'&&isLegacy(en.name)){const f=await en.getFile(); addToQueue(f.name,await f.text());} }
+      else{ const f=await h.getFile(); if(isLegacy(f.name)) addToQueue(f.name,await f.text()); }
+    } else { const f=item.getAsFile(); if(f&&isLegacy(f.name)) addToQueue(f.name,await f.text()); }
+  }
+}
+async function pickOutputDir() {
+  try { outputDirHandle=await window.showDirectoryPicker({mode:'readwrite'}); document.getElementById('out-dir-name').textContent=outputDirHandle.name+'/'; }
+  catch(e){ if(e.name!=='AbortError') showStatus('Could not access output directory.',false); }
+}
+async function saveFile(base, suffix, content) {
+  if(!outputDirHandle) return;
+  try { const fh=await outputDirHandle.getFileHandle(base+suffix,{create:true}); const w=await fh.createWritable(); await w.write(content); await w.close(); } catch(e){ console.warn('Save failed:',e); }
+}
+
+// ─── Core processing ──────────────────────────────────────────────
+const SYS = 'You are a senior software engineer. Be concise and direct. For documentation use plain text with labeled sections — no markdown headers or fences. For code output raw code only, no backtick fences, no preamble.';
+
+async function assessComplexity(code, srcLabel, tgtLabel) {
+  const raw = await callAI(
+    'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation.',
+    `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 is trivial, 100 is practically impossible to automate cleanly. Issues = specific blockers (max 4). Empty array if none.\n\nScript:\n${code}`,
+    ()=>{}
+  );
+  try { return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+  catch { return {score:40,level:'medium',label:'Unknown',issues:['Could not assess complexity automatically.'],manual_required:false}; }
+}
+
+async function processOne(code, srcLabel, tgt, tgtLabel, baseName) {
+  const ext = TGT_EXT[tgt];
+  const testExt = {python3:'py',go:'_test.go'}[tgt]||'sh';
+  let complexity = {score:0,level:'low',label:'Clean',issues:[],manual_required:false};
+
+  const skipAssess = document.getElementById('skip-complexity').value === 'true';
+  if(!skipAssess) {
+    showStatus('Analyzing complexity…', true);
+    complexity = await assessComplexity(code, srcLabel, tgtLabel);
+    showComplexity(complexity.score, `${complexity.label} (${complexity.score}/100)`, complexity.level);
+    showWarning(complexity.level, complexity.issues);
+  } else {
+    document.getElementById('complexity-wrap').style.display='none';
+    document.getElementById('warn-banner').className='warn-banner';
+  }
+
+  switchTab('docs'); setDot('docs','dot-run');
+  showStatus('Generating documentation…', true);
+  const docs = await callAI(SYS,
+    `Analyze this ${srcLabel} script and write developer documentation.\n\n1. PURPOSE — what it does\n2. INPUTS — args, env vars, files read\n3. OUTPUTS — what it produces or modifies\n4. LOGIC WALKTHROUGH — key steps\n5. KNOWN RISKS — fragility, assumptions, hardcoded values\n6. MIGRATION NOTES — specific challenges converting to ${tgtLabel}${complexity.issues.length?'\n\nKnown migration blockers:\n'+complexity.issues.join('\n'):''}`,
+    t=>setOutput('docs',t,true));
+  setDot('docs', complexity.level==='high'?'dot-warn':'dot-done');
+  if(baseName) await saveFile(baseName,'_docs.txt',docs);
+
+  switchTab('tests'); setDot('tests','dot-run');
+  showStatus('Generating test script…', true);
+  const testLang = ['python3','go'].includes(tgt)?tgt:'bash';
+  const tests = await callAI(SYS,
+    `Write a ${testLang==='python3'?'pytest':testLang==='go'?'Go test':'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw code. Include tests for each behavior, edge cases, and clear test names.\n\nOriginal:\n${code}`,
+    t=>setOutput('tests',t,false));
+  setDot('tests','dot-done');
+  if(baseName) await saveFile(baseName,'_test.'+testExt,tests);
+
+  switchTab('converted'); setDot('converted','dot-run');
+  showStatus('Converting to '+tgtLabel+'…', true);
+  const manualNote = complexity.manual_required ? '\nIMPORTANT: Some parts cannot be automatically converted. Insert clear # TODO: MANUAL REVIEW comments where human intervention is required, explaining what needs to be done.' : '';
+  const converted = await callAI(SYS,
+    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY raw ${tgtLabel} code, no fences.`+
+    (tgt==='ansible'?'\nUse official Ansible modules (not shell/command). Every task needs a descriptive name. Use variables for hardcoded values.':'')+
+    (tgt==='python3'?'\nUse argparse for CLI args. Use subprocess.run() for shell commands.':'')+
+    manualNote+`\n\nScript:\n${code}`,
+    t=>setOutput('converted',t,false));
+  setDot('converted', complexity.manual_required?'dot-warn':'dot-done');
+  if(baseName) await saveFile(baseName,'.'+ext,converted);
+
+  return {docs, tests, converted, complexity};
+}
+
+// ─── Run ──────────────────────────────────────────────────────────
+async function runAll() {
+  const src = document.getElementById('src-lang').value;
+  const srcLabel = document.getElementById('src-lang').options[document.getElementById('src-lang').selectedIndex].text;
+  const tgt = document.getElementById('tgt-lang').value;
+  const tgtLabel = TGT_LABELS[tgt];
+  const btn = document.getElementById('run-btn');
+  btn.disabled=true;
+  ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
+  document.getElementById('complexity-wrap').style.display='none';
+  document.getElementById('warn-banner').className='warn-banner';
+  document.getElementById('summary-panel').classList.remove('show');
+  batchResults=[];
+
+  try {
+    if(mode==='single') {
+      const code = document.getElementById('code-input').value.trim();
+      if(!code){alert('Paste some legacy code first.');btn.disabled=false;return;}
+      const result = await processOne(code, srcLabel, tgt, tgtLabel, null);
+      showStatus(result.complexity.manual_required ? 'Done — manual review required (see warnings above).' : 'Done.', false);
+      switchTab('docs');
+    } else {
+      if(!queue.length){alert('No files in queue.');btn.disabled=false;return;}
+      const delay = parseInt(document.getElementById('batch-delay').value);
+      for(let i=0;i<queue.length;i++){
+        const f=queue[i];
+        queue[i].status='running'; renderQueue();
+        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name}`, true);
+        ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
+        document.getElementById('complexity-wrap').style.display='none';
+        document.getElementById('warn-banner').className='warn-banner';
+        try {
+          const base=f.name.replace(/\.[^.]+$/,'');
+          const result=await processOne(f.content,srcLabel,tgt,tgtLabel,base);
+          queue[i].status=result.complexity.level==='high'?'warn':'done';
+          batchResults.push({name:f.name,...result});
+        } catch(e) {
+          queue[i].status='error';
+          batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});
+        }
+        renderQueue();
+        if(delay && i < queue.length-1) await new Promise(r=>setTimeout(r,delay));
+      }
+      showStatus('Batch complete.', false);
+      switchTab('docs');
+      renderSummary(batchResults);
+    }
+  } catch(e) {
+    showStatus('Error: '+e.message, false);
+  } finally {
+    btn.disabled=false;
+  }
+}
+
+// ─── Summary ──────────────────────────────────────────────────────
+function renderSummary(results) {
+  document.getElementById('summary-panel').classList.add('show');
+  const total=results.length;
+  const clean=results.filter(r=>r.complexity&&r.complexity.level==='low').length;
+  const partial=results.filter(r=>r.complexity&&r.complexity.level==='medium').length;
+  const manual=results.filter(r=>r.complexity&&r.complexity.level==='high').length;
+  document.getElementById('stat-grid').innerHTML=
+    `<div class="stat-card"><div class="stat-val">${total}</div><div class="stat-lbl">Files processed</div></div>`+
+    `<div class="stat-card"><div class="stat-val" style="color:#1D9E75;">${clean}</div><div class="stat-lbl">Clean</div></div>`+
+    `<div class="stat-card"><div class="stat-val" style="color:#BA7517;">${partial}</div><div class="stat-lbl">Needs review</div></div>`+
+    `<div class="stat-card"><div class="stat-val" style="color:#E24B4A;">${manual}</div><div class="stat-lbl">Manual required</div></div>`;
+  const tbody=document.getElementById('summary-tbody');
+  tbody.innerHTML='';
+  results.forEach(r=>{
+    const c=r.complexity||{};
+    const pillClass={low:'risk-clean',medium:'risk-partial',high:'risk-manual'}[c.level]||'risk-manual';
+    const pillText={low:'Clean',medium:'Partial',high:'Manual'}[c.level]||'Error';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px;">${r.name}</code></td>`+
+      `<td><span class="risk-pill ${pillClass}">${pillText}</span><div class="note-cell" style="margin-top:3px;">${c.score||0}/100</div></td>`+
+      `<td>${c.manual_required?'Partial + TODOs':'Automated'}</td>`+
+      `<td class="note-cell">${(c.issues&&c.issues.length)?c.issues.join('; '):'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportSummaryCSV() {
+  const rows=[['File','Level','Score','Conversion','Issues']];
+  batchResults.forEach(r=>{
+    const c=r.complexity||{};
+    rows.push([r.name, c.level||'', c.score||0, c.manual_required?'Partial+TODOs':'Automated', (c.issues||[]).join(' | ')]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadText(csv,'rosetta_summary.csv');
+}
+</script>
+</body>
+</html>

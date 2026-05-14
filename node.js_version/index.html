@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legacy Code Modernizer — Rosetta Stone</title>
+<style>
+  :root {
+    --bg:#fff;--bg2:#f5f5f3;--bg3:#eeede9;
+    --bg-info:#e6f1fb;--bg-success:#eaf3de;--bg-warn:#faeeda;--bg-danger:#fcebeb;
+    --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+    --text-info:#0c447c;--text-success:#27500a;--text-warn:#633806;--text-danger:#791f1f;
+    --border:rgba(0,0,0,.12);--border2:rgba(0,0,0,.22);
+    --r:8px;--rl:12px;
+    --mono:'Menlo','Consolas','Monaco',monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
+    --bg-info:#0c2a45;--bg-success:#0f2a06;--bg-warn:#2d1f06;--bg-danger:#2d0f0f;
+    --text:#f0ede8;--text2:#a8a69e;--text3:#6e6d68;
+    --text-info:#85b7eb;--text-success:#97c459;--text-warn:#ef9f27;--text-danger:#f09595;
+    --border:rgba(255,255,255,.1);--border2:rgba(255,255,255,.2);
+  }}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+  .shell{max-width:880px;margin:0 auto;padding:2rem 1.5rem 5rem}
+
+  .app-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem}
+  .app-title{display:flex;align-items:center;gap:10px}
+  .app-title h1{font-size:20px;font-weight:600}
+  .app-sub{font-size:12px;color:var(--text3);margin-bottom:1.5rem;padding-left:34px}
+
+  .card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);padding:1.25rem;margin-bottom:1rem}
+
+  /* Settings */
+  .settings-panel{display:none;background:var(--bg);border:.5px solid var(--border);border-radius:var(--rl);padding:1.25rem;margin-bottom:1rem}
+  .settings-panel.open{display:block}
+  .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media(max-width:580px){.settings-grid{grid-template-columns:1fr}}
+  .settings-sec{border:.5px solid var(--border);border-radius:var(--r);padding:1rem}
+  .settings-sec h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:.75rem}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:.75rem}
+  .field:last-child{margin-bottom:0}
+  .field label{font-size:12px;color:var(--text2)}
+  .field input,.field select{width:100%;padding:7px 10px;font-size:13px;font-family:var(--sans);background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);color:var(--text);outline:none}
+  .field input[type=password]{font-family:var(--mono);letter-spacing:.1em}
+  .prov-toggle{display:flex;border:.5px solid var(--border2);border-radius:var(--r);overflow:hidden;margin-bottom:.75rem}
+  .prov-btn{flex:1;padding:7px 10px;font-size:12px;background:none;border:none;cursor:pointer;font-family:var(--sans);color:var(--text2)}
+  .prov-btn.active{background:var(--bg2);color:var(--text);font-weight:600}
+  .prov-btn:not(:last-child){border-right:.5px solid var(--border2)}
+  .settings-note{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5}
+  .conn-row{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:8px}
+  .conn-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+  .conn-dot.ok{background:#1D9E75}.conn-dot.err{background:#E24B4A}
+  .server-status{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r);font-size:12px;margin-bottom:.75rem}
+  .server-ok{background:var(--bg-success);color:var(--text-success)}
+  .server-err{background:var(--bg-danger);color:var(--text-danger)}
+
+  /* Main */
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem}
+  @media(max-width:500px){.row2{grid-template-columns:1fr}}
+  .sel-group{display:flex;flex-direction:column;gap:5px}
+  .sel-group label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}
+  select{width:100%;padding:8px 10px;font-size:13px;font-family:var(--sans);background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);color:var(--text);outline:none;cursor:pointer}
+  .mode-toggle{display:flex;border:.5px solid var(--border2);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+  .mode-btn{flex:1;padding:9px 12px;font-size:13px;background:none;border:none;cursor:pointer;font-family:var(--sans);color:var(--text2)}
+  .mode-btn.active{background:var(--bg2);color:var(--text);font-weight:600}
+  .mode-btn:not(:last-child){border-right:.5px solid var(--border2)}
+  .sec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  .sec-action{font-size:12px;color:var(--text-info);background:none;border:none;cursor:pointer;font-family:var(--sans);padding:0}
+  .sec-action:hover{text-decoration:underline}
+
+  textarea{width:100%;height:200px;font-family:var(--mono);font-size:12.5px;resize:vertical;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:12px;color:var(--text);line-height:1.6;outline:none;margin-bottom:1rem}
+
+  /* Batch inputs */
+  .batch-input-row{display:flex;gap:8px;margin-bottom:8px}
+  .path-input-wrap{display:flex;gap:6px;margin-bottom:10px}
+  .path-input-wrap input{flex:1;padding:7px 10px;font-size:13px;font-family:var(--mono);background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);color:var(--text);outline:none}
+  .drop-zone{border:1.5px dashed var(--border2);border-radius:var(--rl);padding:22px 20px;text-align:center;margin-bottom:10px;cursor:pointer;transition:background .12s}
+  .drop-zone:hover,.drop-zone.drag-over{background:var(--bg2)}
+  .drop-zone p{font-size:14px;color:var(--text2)}
+  .drop-zone .sub{font-size:12px;color:var(--text3);margin-top:3px}
+
+  .queue-wrap{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);margin-bottom:1rem;max-height:180px;overflow-y:auto}
+  .queue-empty{padding:14px;font-size:13px;color:var(--text3);text-align:center}
+  .queue-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:.5px solid var(--border);font-size:12px}
+  .queue-item:last-child{border-bottom:none}
+  .fname{flex:1;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qi-badge{font-size:11px;padding:2px 8px;border-radius:100px;white-space:nowrap}
+  .st-pending{background:var(--bg3);color:var(--text3);border:.5px solid var(--border)}
+  .st-running{background:var(--bg-info);color:var(--text-info)}
+  .st-done{background:var(--bg-success);color:var(--text-success)}
+  .st-warn{background:var(--bg-warn);color:var(--text-warn)}
+  .st-error{background:var(--bg-danger);color:var(--text-danger)}
+  .qi-remove{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:0 2px}
+  .qi-remove:hover{color:var(--text-danger)}
+
+  /* Buttons */
+  .btn{padding:8px 14px;font-size:13px;font-family:var(--sans);background:var(--bg);border:.5px solid var(--border2);border-radius:var(--r);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background .12s}
+  .btn:hover{background:var(--bg2)}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .btn-full{width:100%;justify-content:center;padding:11px;font-size:14px;font-weight:600}
+  .btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}.btn-primary:hover{opacity:.88;background:var(--text)}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  .btn-row{display:flex;gap:8px;margin-bottom:8px}
+
+  /* Complexity & warnings */
+  .complexity-wrap{margin:10px 0 1rem;display:none}
+  .cb-hdr{display:flex;justify-content:space-between;margin-bottom:6px}
+  .cb-label{font-size:12px;color:var(--text2)}.cb-score{font-size:13px;font-weight:600}
+  .cb-track{height:7px;background:var(--bg3);border-radius:100px;overflow:hidden;border:.5px solid var(--border)}
+  .cb-fill{height:100%;border-radius:100px;transition:width .5s ease}
+  .fill-green{background:#1D9E75}.fill-amber{background:#BA7517}.fill-red{background:#E24B4A}
+  .warn-banner{border-radius:var(--r);padding:10px 14px;margin-bottom:1rem;font-size:13px;line-height:1.6;display:none}
+  .warn-banner.show{display:block}
+  .warn-amber{background:var(--bg-warn);color:var(--text-warn);border:.5px solid #EF9F27}
+  .warn-red{background:var(--bg-danger);color:var(--text-danger);border:.5px solid #F09595}
+  .warn-banner strong{font-weight:600;display:block;margin-bottom:3px}
+
+  .status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-top:8px;min-height:20px}
+  .spinner{width:13px;height:13px;border:1.5px solid var(--border2);border-top-color:var(--text2);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Tabs */
+  .tabs{display:flex;border-bottom:.5px solid var(--border);margin-top:1.5rem}
+  .tab{font-size:13px;padding:9px 14px;cursor:pointer;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-.5px;font-family:var(--sans);white-space:nowrap}
+  .tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:600}
+  .tab:hover:not(.active){color:var(--text)}
+  .tab-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:5px;vertical-align:middle}
+  .dot-done{background:#1D9E75}.dot-warn{background:#BA7517}.dot-run{background:#378ADD}
+
+  /* Output */
+  .out-box{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:14px 46px 14px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--text);min-height:160px;white-space:pre-wrap;word-break:break-word;max-height:400px;overflow-y:auto;position:relative;margin-top:1px}
+  .out-box.prose{font-family:var(--sans);font-size:13.5px;line-height:1.8}
+  .placeholder{color:var(--text3);font-family:var(--sans);font-size:13px}
+  .out-actions{position:absolute;top:10px;right:10px;display:flex;gap:4px}
+
+  /* Summary */
+  .summary-panel{display:none;margin-top:1.5rem}
+  .summary-panel.show{display:block}
+  .summary-title{font-size:15px;font-weight:600;margin-bottom:1rem}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.25rem}
+  @media(max-width:500px){.stat-grid{grid-template-columns:1fr 1fr}}
+  .stat-card{background:var(--bg2);border-radius:var(--r);padding:14px;text-align:center;border:.5px solid var(--border)}
+  .stat-val{font-size:26px;font-weight:700}.stat-lbl{font-size:11px;color:var(--text2);margin-top:2px}
+  .summary-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .summary-table th{text-align:left;padding:7px 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);border-bottom:.5px solid var(--border)}
+  .summary-table td{padding:8px 10px;border-bottom:.5px solid var(--border);color:var(--text);vertical-align:top}
+  .summary-table tr:last-child td{border-bottom:none}
+  .note-cell{font-size:11.5px;color:var(--text2)}
+  .risk-pill{font-size:11px;padding:2px 9px;border-radius:100px;display:inline-block}
+  .risk-clean{background:var(--bg-success);color:var(--text-success)}
+  .risk-partial{background:var(--bg-warn);color:var(--text-warn)}
+  .risk-manual{background:var(--bg-danger);color:var(--text-danger)}
+
+  ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="app-header">
+    <div class="app-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3m13 0h-8M4 12h8m5 0h-1M4 17h3m13 0h-8"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+      <h1>Legacy Code Modernizer</h1>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div id="server-pill" class="btn btn-sm" style="cursor:default;gap:6px;">
+        <span class="conn-dot" id="srv-dot"></span><span id="srv-label">Connecting…</span>
+      </div>
+      <button class="btn btn-sm" onclick="toggleSettings()">&#9881; Settings</button>
+    </div>
+  </div>
+  <div class="app-sub">Rosetta Stone &nbsp;·&nbsp; translate legacy scripts into modern automation</div>
+
+  <!-- Settings -->
+  <div class="settings-panel" id="settings-panel">
+    <div style="font-size:13px;font-weight:600;margin-bottom:1rem;">&#9881; AI Provider Settings</div>
+    <div class="settings-grid">
+      <div class="settings-sec">
+        <h3>Provider</h3>
+        <div class="prov-toggle">
+          <button class="prov-btn active" id="prov-anthropic" onclick="setProvider('anthropic')">Anthropic API</button>
+          <button class="prov-btn" id="prov-ollama" onclick="setProvider('ollama')">Ollama (local)</button>
+        </div>
+        <div id="anthropic-info">
+          <p class="settings-note" style="background:var(--bg-success);color:var(--text-success);padding:8px 10px;border-radius:var(--r);margin-bottom:8px;">
+            &#128274; API key is set in <code style="font-family:var(--mono)">.env</code> on the server — never sent to your browser.
+          </p>
+          <div class="field">
+            <label>Model</label>
+            <select id="anthropic-model" onchange="savePrefs()">
+              <option value="claude-sonnet-4-20250514">claude-sonnet-4 (recommended)</option>
+              <option value="claude-opus-4-20250514">claude-opus-4 (most capable)</option>
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (fastest)</option>
+            </select>
+          </div>
+        </div>
+        <div id="ollama-info" class="hidden">
+          <p class="settings-note" style="margin-bottom:8px;">
+            Ollama URL is set via <code style="font-family:var(--mono)">OLLAMA_BASE_URL</code> in <code style="font-family:var(--mono)">.env</code>.
+            Current: <strong id="ollama-url-display"></strong>
+          </p>
+          <div class="field">
+            <label>Model name</label>
+            <input type="text" id="ollama-model" value="qwen2.5-coder" placeholder="e.g. qwen2.5-coder, llama3.1:70b" onchange="savePrefs()">
+          </div>
+          <p class="settings-note">Run Ollama with: <code style="font-family:var(--mono);font-size:11px;">ollama serve</code></p>
+        </div>
+        <div class="conn-row" style="margin-top:10px;">
+          <div class="conn-dot" id="conn-dot"></div>
+          <span id="conn-label">Not tested</span>
+          <button class="btn btn-sm" onclick="testConn()" style="margin-left:auto;">Test connection</button>
+        </div>
+      </div>
+      <div class="settings-sec">
+        <h3>Generation options</h3>
+        <div class="field"><label>Max tokens per request</label>
+          <select id="max-tokens" onchange="savePrefs()">
+            <option value="1000">1000 (default)</option>
+            <option value="2000">2000</option>
+            <option value="4000">4000 (large files)</option>
+          </select>
+        </div>
+        <div class="field"><label>Temperature</label>
+          <select id="temperature" onchange="savePrefs()">
+            <option value="0.1">0.1 — deterministic (recommended)</option>
+            <option value="0.3">0.3 — slight variation</option>
+            <option value="0.7">0.7 — creative</option>
+          </select>
+        </div>
+        <div class="field"><label>Skip complexity assessment</label>
+          <select id="skip-complexity" onchange="savePrefs()">
+            <option value="false">No — always assess (recommended)</option>
+            <option value="true">Yes — faster, no pre-check</option>
+          </select>
+        </div>
+        <div class="field"><label>Batch delay between files</label>
+          <select id="batch-delay" onchange="savePrefs()">
+            <option value="0">None</option>
+            <option value="1000">1 second</option>
+            <option value="2000">2 seconds (rate limit safe)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="card">
+    <div class="row2">
+      <div class="sel-group">
+        <label>Source language</label>
+        <select id="src-lang" onchange="onSrcChange()">
+          <option value="bash">Bash / Shell</option>
+          <option value="perl">Perl</option>
+          <option value="cobol">COBOL</option>
+          <option value="fortran">Fortran</option>
+          <option value="awk">AWK</option>
+          <option value="tcl">Tcl</option>
+          <option value="csh">C Shell (csh)</option>
+        </select>
+      </div>
+      <div class="sel-group">
+        <label>Target language</label>
+        <select id="tgt-lang">
+          <option value="ansible">Ansible YAML Playbook</option>
+          <option value="python3">Python 3</option>
+          <option value="terraform">Terraform HCL</option>
+          <option value="go">Go</option>
+          <option value="powershell">PowerShell (modern)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-single" onclick="setMode('single')">&#128196; Single file / paste</button>
+      <button class="mode-btn" id="btn-batch" onclick="setMode('batch')">&#128193; Directory / batch</button>
+    </div>
+
+    <!-- Single -->
+    <div id="single-panel">
+      <div class="sec-label"><span>Legacy source code</span><button class="sec-action" onclick="loadSample()">load sample &#8594;</button></div>
+      <textarea id="code-input" placeholder="Paste your legacy script here…"></textarea>
+    </div>
+
+    <!-- Batch -->
+    <div id="batch-panel" class="hidden">
+      <div class="sec-label" style="margin-bottom:6px;">Server-side directory path</div>
+      <div class="path-input-wrap">
+        <input type="text" id="dir-path" placeholder="/path/to/legacy_scripts" onkeydown="if(event.key==='Enter')scanDir()">
+        <button class="btn" onclick="scanDir()">&#128269; Scan</button>
+      </div>
+      <div class="drop-zone" id="drop-zone"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <p>&#8613; Or drop files here (any browser, any OS)</p>
+        <p class="sub">.sh .bash .pl .cob .f .awk .tcl .csh and more</p>
+      </div>
+      <input type="file" id="fp" multiple accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh" style="display:none" onchange="handleFilePicker(this)">
+      <div class="btn-row">
+        <button class="btn" style="flex:1" onclick="document.getElementById('fp').click()">&#128196; Pick files…</button>
+        <button class="btn btn-sm" onclick="clearQueue()">Clear queue</button>
+      </div>
+
+      <div class="sec-label" style="margin-bottom:6px;margin-top:4px;">
+        Output directory <span style="color:var(--text3);font-weight:400;">(server path)</span>
+      </div>
+      <div class="path-input-wrap" style="margin-bottom:1rem;">
+        <input type="text" id="out-dir-path" placeholder="/path/to/output  (leave blank to download only)">
+      </div>
+
+      <div class="sec-label">File queue <span id="queue-count" style="color:var(--text3);font-weight:400;margin-left:4px;">0 files</span></div>
+      <div class="queue-wrap" id="queue-list"><div class="queue-empty">No files added yet</div></div>
+    </div>
+
+    <div class="complexity-wrap" id="complexity-wrap">
+      <div class="cb-hdr"><span class="cb-label">Conversion complexity</span><span class="cb-score" id="cb-score-label"></span></div>
+      <div class="cb-track"><div class="cb-fill" id="cb-fill" style="width:0%"></div></div>
+    </div>
+    <div class="warn-banner" id="warn-banner"></div>
+
+    <button class="btn btn-full btn-primary" id="run-btn" onclick="runAll()">
+      &#9654; <span id="run-label">Generate documentation, tests &amp; converted code</span>
+    </button>
+    <div class="status-row" id="status-row"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('docs')" id="tab-docs">&#128196; Documentation<span id="ind-docs"></span></button>
+    <button class="tab" onclick="switchTab('tests')" id="tab-tests">&#9878; Test script<span id="ind-tests"></span></button>
+    <button class="tab" onclick="switchTab('converted')" id="tab-converted">&lt;/&gt; Converted code<span id="ind-converted"></span></button>
+  </div>
+  <div id="panel-docs"><div class="out-box prose" id="out-docs"><span class="placeholder">Documentation will appear here after generation.</span></div></div>
+  <div id="panel-tests" class="hidden"><div class="out-box" id="out-tests"><span class="placeholder">Test script will appear here after generation.</span></div></div>
+  <div id="panel-converted" class="hidden"><div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div></div>
+
+  <div class="summary-panel card" id="summary-panel">
+    <div class="summary-title">&#128202; Batch results summary</div>
+    <div class="stat-grid" id="stat-grid"></div>
+    <div class="sec-label" style="margin-bottom:8px;">File-by-file breakdown</div>
+    <div style="overflow-x:auto"><table class="summary-table">
+      <thead><tr><th>File</th><th>Complexity</th><th>Conversion</th><th>Issues</th></tr></thead>
+      <tbody id="summary-tbody"></tbody>
+    </table></div>
+    <div style="margin-top:1rem"><button class="btn btn-sm" onclick="exportCSV()">&#8615; Export CSV</button></div>
+  </div>
+</div>
+
+<script>
+const SAMPLES={
+  bash:`#!/bin/bash\n# backup.sh — backs up /var/data to /mnt/backup\nset -euo pipefail\nSRC="/var/data"\nDEST="/mnt/backup/$(date +%Y%m%d_%H%M%S)"\nmkdir -p "$DEST"\ncp -r "$SRC/"* "$DEST/"\nfind "$DEST" -name "*.log" -mtime +30 -delete\necho "Backup complete: $DEST"`,
+  perl:`#!/usr/bin/perl\nuse strict; use warnings;\nmy $logfile=$ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
+  cobol:`       IDENTIFICATION DIVISION.\n       PROGRAM-ID. CALC-TAX.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-INCOME PIC 9(7)V99.\n       01 WS-TAX    PIC 9(7)V99.\n       PROCEDURE DIVISION.\n           MOVE 55000.00 TO WS-INCOME\n           COMPUTE WS-TAX = WS-INCOME * 0.22\n           DISPLAY "Tax: " WS-TAX\n           STOP RUN.`,
+  awk:`#!/usr/bin/awk -f\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
+  fortran:`      PROGRAM STATS\n      IMPLICIT NONE\n      INTEGER I,N\n      REAL X(100),SUMX,MEAN\n      N=5\n      DATA X /3.0,7.0,5.0,9.0,1.0,95*0.0/\n      SUMX=0.0\n      DO 10 I=1,N\n        SUMX=SUMX+X(I)\n   10 CONTINUE\n      MEAN=SUMX/N\n      WRITE(*,*) 'Mean =',MEAN\n      END`,
+  tcl:`#!/usr/bin/tclsh\nset hosts {192.168.1.1 192.168.1.2 10.0.0.1}\nforeach host $hosts {\n  set r [catch {exec ping -c 1 -W 1 $host} out]\n  puts "$host: [expr {$r==0?{UP}:{DOWN}}]"\n}`,
+  csh:`#!/bin/csh\nset APP="myapp"\nset DIR="/opt/$APP"\nif(-d $DIR) then\n  /etc/init.d/$APP stop\nendif\ncp -r ./dist/* $DIR/\n/etc/init.d/$APP start`
+};
+const TGT_LABELS={ansible:'Ansible YAML',python3:'Python 3',terraform:'Terraform HCL',go:'Go',powershell:'PowerShell'};
+const TGT_EXT={ansible:'yml',python3:'py',terraform:'tf',go:'go',powershell:'ps1'};
+const LEGACY_EXTS=new Set(['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh','sas','vbs']);
+
+let mode='single', queue=[], batchResults=[], provider='anthropic';
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  loadPrefs();
+  loadSample();
+  await checkServer();
+});
+
+async function checkServer() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    document.getElementById('srv-dot').className = 'conn-dot ok';
+    document.getElementById('srv-label').textContent = 'Server connected';
+    if (d.ollama_url) document.getElementById('ollama-url-display').textContent = d.ollama_url;
+    if (!d.anthropic) {
+      document.getElementById('anthropic-info').insertAdjacentHTML('afterbegin',
+        '<p class="settings-note" style="background:var(--bg-warn);color:var(--text-warn);padding:8px 10px;border-radius:var(--r);margin-bottom:8px;">⚠ ANTHROPIC_API_KEY not found in .env — add it and restart the server.</p>');
+    }
+  } catch {
+    document.getElementById('srv-dot').className = 'conn-dot err';
+    document.getElementById('srv-label').textContent = 'Server not running';
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────
+function toggleSettings(){ document.getElementById('settings-panel').classList.toggle('open'); }
+function setProvider(p){
+  provider=p;
+  document.getElementById('prov-anthropic').classList.toggle('active',p==='anthropic');
+  document.getElementById('prov-ollama').classList.toggle('active',p==='ollama');
+  document.getElementById('anthropic-info').classList.toggle('hidden',p!=='anthropic');
+  document.getElementById('ollama-info').classList.toggle('hidden',p!=='ollama');
+  resetConn(); savePrefs();
+}
+function resetConn(){ document.getElementById('conn-dot').className='conn-dot'; document.getElementById('conn-label').textContent='Not tested'; }
+function showConn(msg,ok,err){
+  document.getElementById('conn-dot').className='conn-dot'+(ok?' ok':err?' err':'');
+  document.getElementById('conn-label').textContent=msg;
+}
+async function testConn(){
+  showConn('Testing…',false,false);
+  try {
+    const text = await streamAI('You are a test assistant.','Reply with only the word: connected',()=>{});
+    if(text.toLowerCase().includes('connected')) showConn('Connected successfully',true,false);
+    else showConn('Unexpected response',false,false);
+  } catch(e){ showConn('Failed: '+e.message,false,true); }
+}
+function savePrefs(){
+  localStorage.setItem('rs_provider', provider);
+  localStorage.setItem('rs_model', document.getElementById('anthropic-model').value);
+  localStorage.setItem('rs_ollama_model', document.getElementById('ollama-model').value);
+  localStorage.setItem('rs_max_tokens', document.getElementById('max-tokens').value);
+  localStorage.setItem('rs_temp', document.getElementById('temperature').value);
+  localStorage.setItem('rs_skip', document.getElementById('skip-complexity').value);
+  localStorage.setItem('rs_delay', document.getElementById('batch-delay').value);
+}
+function loadPrefs(){
+  const p=localStorage.getItem('rs_provider')||'anthropic'; setProvider(p);
+  const m=localStorage.getItem('rs_model'); if(m) document.getElementById('anthropic-model').value=m;
+  const om=localStorage.getItem('rs_ollama_model'); if(om) document.getElementById('ollama-model').value=om;
+  const mt=localStorage.getItem('rs_max_tokens'); if(mt) document.getElementById('max-tokens').value=mt;
+  const t=localStorage.getItem('rs_temp'); if(t) document.getElementById('temperature').value=t;
+  const sk=localStorage.getItem('rs_skip'); if(sk) document.getElementById('skip-complexity').value=sk;
+  const d=localStorage.getItem('rs_delay'); if(d) document.getElementById('batch-delay').value=d;
+}
+
+// ── AI call via server proxy (SSE) ────────────────────────────────
+async function streamAI(system, user, onChunk) {
+  const body = {
+    provider,
+    system, user,
+    model: provider==='anthropic'
+      ? document.getElementById('anthropic-model').value
+      : document.getElementById('ollama-model').value,
+    max_tokens: parseInt(document.getElementById('max-tokens').value),
+    temperature: parseFloat(document.getElementById('temperature').value)
+  };
+
+  const resp = await fetch('/api/ai', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+
+  if (!resp.ok) throw new Error('Server error ' + resp.status);
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf='', full='';
+  while(true) {
+    const {done,value} = await reader.read(); if(done) break;
+    buf += dec.decode(value,{stream:true});
+    const lines = buf.split('\n'); buf=lines.pop();
+    for(const line of lines) {
+      if(!line.startsWith('data: ')) continue;
+      const d=line.slice(6).trim(); if(d==='[DONE]') continue;
+      try {
+        const parsed=JSON.parse(d);
+        if(parsed.error) throw new Error(parsed.error);
+        if(parsed.text){ full+=parsed.text; onChunk(full); }
+      } catch(e){ if(e.message!=='undefined') throw e; }
+    }
+  }
+  return full;
+}
+
+// ── Mode / UI ─────────────────────────────────────────────────────
+function setMode(m){
+  mode=m;
+  document.getElementById('btn-single').classList.toggle('active',m==='single');
+  document.getElementById('btn-batch').classList.toggle('active',m==='batch');
+  document.getElementById('single-panel').classList.toggle('hidden',m!=='single');
+  document.getElementById('batch-panel').classList.toggle('hidden',m!=='batch');
+  document.getElementById('run-label').textContent=m==='single'?'Generate documentation, tests & converted code':'Process queue';
+  document.getElementById('summary-panel').classList.remove('show');
+}
+function loadSample(){ document.getElementById('code-input').value=SAMPLES[document.getElementById('src-lang').value]||SAMPLES.bash; }
+function onSrcChange(){ const v=document.getElementById('code-input').value.trim(); if(!v||Object.values(SAMPLES).includes(v)) loadSample(); }
+function isLegacy(n){ return LEGACY_EXTS.has(n.split('.').pop().toLowerCase()); }
+function switchTab(tab){
+  ['docs','tests','converted'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('panel-'+t).classList.toggle('hidden',t!==tab);
+  });
+}
+function setDot(tab,cls){ document.getElementById('ind-'+tab).innerHTML=cls?`<span class="tab-dot ${cls}"></span>`:''; }
+function showStatus(msg,spinning){
+  const r=document.getElementById('status-row');
+  r.innerHTML=msg?(spinning?`<div class="spinner"></div><span>${msg}</span>`:`<span>${msg}</span>`):'';
+}
+function setOutput(tab,text,prose){
+  const el=document.getElementById('out-'+tab);
+  el.className='out-box'+(prose?' prose':'');
+  if(!text){ el.innerHTML=`<span class="placeholder">${tab==='docs'?'Documentation':tab==='tests'?'Test script':'Converted code'} will appear here.</span>`; return; }
+  el.textContent=text;
+  const acts=document.createElement('div'); acts.className='out-actions';
+  const cp=document.createElement('button'); cp.className='btn btn-sm'; cp.textContent='Copy';
+  cp.onclick=()=>{ navigator.clipboard.writeText(text).then(()=>{ cp.textContent='Copied!'; setTimeout(()=>cp.textContent='Copy',1500); }); };
+  acts.appendChild(cp);
+  const dl=document.createElement('button'); dl.className='btn btn-sm'; dl.textContent='Download';
+  const exts={docs:'txt',tests:'sh',converted:TGT_EXT[document.getElementById('tgt-lang').value]||'txt'};
+  dl.onclick=()=>downloadText(text,'rosetta_'+tab+'.'+exts[tab]);
+  acts.appendChild(dl);
+  el.style.position='relative'; el.insertBefore(acts,el.firstChild);
+}
+function downloadText(text,filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+}
+function showComplexity(score,label,level){
+  document.getElementById('complexity-wrap').style.display='';
+  document.getElementById('cb-score-label').textContent=label;
+  const fill=document.getElementById('cb-fill');
+  fill.style.width=score+'%';
+  fill.className='cb-fill '+({low:'fill-green',medium:'fill-amber',high:'fill-red'}[level]);
+}
+function showWarning(level,issues){
+  const el=document.getElementById('warn-banner');
+  if(!issues||!issues.length){ el.className='warn-banner'; return; }
+  el.className='warn-banner show '+(level==='high'?'warn-red':'warn-amber');
+  const title=level==='high'?'&#9888; Manual intervention required':'&#9888; Partial conversion — review recommended';
+  el.innerHTML=`<strong>${title}</strong>${issues.map(i=>`&bull; ${i}`).join('<br>')}`;
+}
+
+// ── Queue ─────────────────────────────────────────────────────────
+function addToQueue(name,content){
+  if(queue.find(f=>f.name===name)) return;
+  queue.push({name,content,status:'pending'});
+  renderQueue();
+}
+function removeFromQueue(i){ queue.splice(i,1); renderQueue(); }
+function clearQueue(){ queue=[]; renderQueue(); }
+function renderQueue(){
+  const list=document.getElementById('queue-list');
+  document.getElementById('queue-count').textContent=queue.length+' file'+(queue.length===1?'':'s');
+  if(!queue.length){ list.innerHTML='<div class="queue-empty">No files added yet</div>'; return; }
+  list.innerHTML='';
+  const stMap={pending:'st-pending',running:'st-running',done:'st-done',warn:'st-warn',error:'st-error'};
+  const stTxt={pending:'queued',running:'processing…',done:'done',warn:'needs review',error:'error'};
+  queue.forEach((f,i)=>{
+    const row=document.createElement('div'); row.className='queue-item';
+    row.innerHTML=`<span class="fname" title="${f.name}">${f.name}</span>`+
+      `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>`+
+      (f.status==='pending'?`<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>`:'');
+    list.appendChild(row);
+  });
+}
+
+// ── File input (works in ALL browsers via server upload) ──────────
+async function scanDir(){
+  const dir=document.getElementById('dir-path').value.trim();
+  if(!dir){ alert('Enter a directory path first.'); return; }
+  try {
+    showStatus('Scanning directory…',true);
+    const r=await fetch('/api/scan-dir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir_path:dir})});
+    const d=await r.json();
+    if(d.error){ showStatus('Error: '+d.error,false); return; }
+    showStatus('',false);
+    for(const f of d.files){
+      const cr=await fetch('/api/read-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:f.path})});
+      const cd=await cr.json();
+      if(cd.content) addToQueue(f.name,cd.content);
+    }
+    if(!d.files.length) showStatus('No recognized legacy files found in: '+d.dir,false);
+  } catch(e){ showStatus('Scan failed: '+e.message,false); }
+}
+
+async function handleFilePicker(input){
+  const fd=new FormData();
+  for(const f of input.files) if(isLegacy(f.name)) fd.append('files',f);
+  input.value='';
+  if(!fd.has('files')) return;
+  const r=await fetch('/api/upload',{method:'POST',body:fd});
+  const d=await r.json();
+  for(const f of d.files) addToQueue(f.name,f.content);
+}
+
+async function handleDrop(e){
+  e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over');
+  const items=[...e.dataTransfer.items].filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(f=>f&&isLegacy(f.name));
+  if(!items.length) return;
+  const fd=new FormData(); items.forEach(f=>fd.append('files',f));
+  const r=await fetch('/api/upload',{method:'POST',body:fd});
+  const d=await r.json();
+  for(const f of d.files) addToQueue(f.name,f.content);
+}
+
+// ── Processing ────────────────────────────────────────────────────
+const SYS='You are a senior software engineer. Be concise and direct. For documentation use plain text with labeled sections — no markdown headers or fences. For code output raw code only, no backtick fences, no preamble.';
+
+async function assessComplexity(code,srcLabel,tgtLabel){
+  const raw=await streamAI(
+    'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation.',
+    `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 trivial, 100 practically impossible. Issues = specific blockers (max 4). Empty array if none.\n\nScript:\n${code}`,
+    ()=>{}
+  );
+  try{ return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+  catch{ return {score:40,level:'medium',label:'Unknown',issues:['Could not assess complexity.'],manual_required:false}; }
+}
+
+async function processOne(code,srcLabel,tgt,tgtLabel,baseName){
+  const ext=TGT_EXT[tgt];
+  const testExt={python3:'py',go:'_test.go'}[tgt]||'sh';
+  let complexity={score:0,level:'low',label:'Clean',issues:[],manual_required:false};
+
+  const skipAssess=document.getElementById('skip-complexity').value==='true';
+  if(!skipAssess){
+    showStatus('Analyzing complexity…',true);
+    complexity=await assessComplexity(code,srcLabel,tgtLabel);
+    showComplexity(complexity.score,`${complexity.label} (${complexity.score}/100)`,complexity.level);
+    showWarning(complexity.level,complexity.issues);
+  } else {
+    document.getElementById('complexity-wrap').style.display='none';
+    document.getElementById('warn-banner').className='warn-banner';
+  }
+
+  switchTab('docs'); setDot('docs','dot-run');
+  showStatus('Generating documentation…',true);
+  const docs=await streamAI(SYS,
+    `Analyze this ${srcLabel} script and write developer documentation.\n\n1. PURPOSE\n2. INPUTS\n3. OUTPUTS\n4. LOGIC WALKTHROUGH\n5. KNOWN RISKS\n6. MIGRATION NOTES — challenges converting to ${tgtLabel}${complexity.issues.length?'\n\nKnown blockers:\n'+complexity.issues.join('\n'):''}`,
+    t=>setOutput('docs',t,true));
+  setDot('docs',complexity.level==='high'?'dot-warn':'dot-done');
+
+  switchTab('tests'); setDot('tests','dot-run');
+  showStatus('Generating test script…',true);
+  const testLang=['python3','go'].includes(tgt)?tgt:'bash';
+  const tests=await streamAI(SYS,
+    `Write a ${testLang==='python3'?'pytest':testLang==='go'?'Go test':'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality. Output ONLY raw code.\n\nOriginal:\n${code}`,
+    t=>setOutput('tests',t,false));
+  setDot('tests','dot-done');
+
+  switchTab('converted'); setDot('converted','dot-run');
+  showStatus('Converting to '+tgtLabel+'…',true);
+  const manualNote=complexity.manual_required?'\nIMPORTANT: Insert clear # TODO: MANUAL REVIEW comments where human intervention is required.':'';
+  const converted=await streamAI(SYS,
+    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY raw ${tgtLabel} code, no fences.`+
+    (tgt==='ansible'?'\nUse official Ansible modules, not shell/command. Every task needs a descriptive name. Use variables for hardcoded values.':'')+
+    (tgt==='python3'?'\nUse argparse for CLI args. Use subprocess.run() for shell commands.':'')+
+    manualNote+`\n\nScript:\n${code}`,
+    t=>setOutput('converted',t,false));
+  setDot('converted',complexity.manual_required?'dot-warn':'dot-done');
+
+  // Save to server if output dir set
+  const outDir=document.getElementById('out-dir-path')?.value?.trim();
+  if(outDir && baseName){
+    await fetch('/api/save-outputs',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({output_dir:outDir,base_name:baseName,docs,tests,converted,converted_ext:ext})
+    });
+  }
+
+  return {docs,tests,converted,complexity};
+}
+
+async function runAll(){
+  const src=document.getElementById('src-lang').value;
+  const srcLabel=document.getElementById('src-lang').options[document.getElementById('src-lang').selectedIndex].text;
+  const tgt=document.getElementById('tgt-lang').value;
+  const tgtLabel=TGT_LABELS[tgt];
+  const btn=document.getElementById('run-btn');
+  btn.disabled=true;
+  ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
+  document.getElementById('complexity-wrap').style.display='none';
+  document.getElementById('warn-banner').className='warn-banner';
+  document.getElementById('summary-panel').classList.remove('show');
+  batchResults=[];
+
+  try {
+    if(mode==='single'){
+      const code=document.getElementById('code-input').value.trim();
+      if(!code){ alert('Paste some legacy code first.'); btn.disabled=false; return; }
+      const result=await processOne(code,srcLabel,tgt,tgtLabel,null);
+      showStatus(result.complexity.manual_required?'Done — manual review required (see warnings above).':'Done.',false);
+      switchTab('docs');
+    } else {
+      if(!queue.length){ alert('No files in queue.'); btn.disabled=false; return; }
+      const delay=parseInt(document.getElementById('batch-delay').value);
+      for(let i=0;i<queue.length;i++){
+        const f=queue[i];
+        queue[i].status='running'; renderQueue();
+        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name}`,true);
+        ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
+        document.getElementById('complexity-wrap').style.display='none';
+        document.getElementById('warn-banner').className='warn-banner';
+        try {
+          const base=f.name.replace(/\.[^.]+$/,'');
+          const result=await processOne(f.content,srcLabel,tgt,tgtLabel,base);
+          queue[i].status=result.complexity.level==='high'?'warn':'done';
+          batchResults.push({name:f.name,...result});
+        } catch(e){
+          queue[i].status='error';
+          batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});
+        }
+        renderQueue();
+        if(delay&&i<queue.length-1) await new Promise(r=>setTimeout(r,delay));
+      }
+      showStatus('Batch complete.',false);
+      switchTab('docs');
+      renderSummary(batchResults);
+    }
+  } catch(e){
+    showStatus('Error: '+e.message,false);
+  } finally {
+    btn.disabled=false;
+  }
+}
+
+function renderSummary(results){
+  document.getElementById('summary-panel').classList.add('show');
+  const total=results.length;
+  const clean=results.filter(r=>r.complexity?.level==='low').length;
+  const partial=results.filter(r=>r.complexity?.level==='medium').length;
+  const manual=results.filter(r=>r.complexity?.level==='high').length;
+  document.getElementById('stat-grid').innerHTML=
+    `<div class="stat-card"><div class="stat-val">${total}</div><div class="stat-lbl">Files processed</div></div>`+
+    `<div class="stat-card"><div class="stat-val" style="color:#1D9E75">${clean}</div><div class="stat-lbl">Clean</div></div>`+
+    `<div class="stat-card"><div class="stat-val" style="color:#BA7517">${partial}</div><div class="stat-lbl">Needs review</div></div>`+
+    `<div class="stat-card"><div class="stat-val" style="color:#E24B4A">${manual}</div><div class="stat-lbl">Manual required</div></div>`;
+  const tbody=document.getElementById('summary-tbody'); tbody.innerHTML='';
+  results.forEach(r=>{
+    const c=r.complexity||{};
+    const pillClass={low:'risk-clean',medium:'risk-partial',high:'risk-manual'}[c.level]||'risk-manual';
+    const pillText={low:'Clean',medium:'Partial',high:'Manual'}[c.level]||'Error';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px">${r.name}</code></td>`+
+      `<td><span class="risk-pill ${pillClass}">${pillText}</span><div class="note-cell" style="margin-top:3px">${c.score||0}/100</div></td>`+
+      `<td>${c.manual_required?'Partial + TODOs':'Automated'}</td>`+
+      `<td class="note-cell">${(c.issues?.length)?c.issues.join('; '):'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportCSV(){
+  const rows=[['File','Level','Score','Conversion','Issues']];
+  batchResults.forEach(r=>{
+    const c=r.complexity||{};
+    rows.push([r.name,c.level||'',c.score||0,c.manual_required?'Partial+TODOs':'Automated',(c.issues||[]).join(' | ')]);
+  });
+  downloadText(rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),'rosetta_summary.csv');
+}
+</script>
+</body>
+</html>
