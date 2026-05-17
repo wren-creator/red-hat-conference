@@ -7,7 +7,7 @@ into modern formats (Ansible YAML, Python 3, Terraform HCL, Go, PowerShell).
 
 ## What's in this folder
 
-  rosetta-stone.html   — The entire application (single file)
+  index.html   — The entire application (single file)
   launch.py            — Optional Python launch script
   README.txt           — This file
 
@@ -16,7 +16,7 @@ into modern formats (Ansible YAML, Python 3, Terraform HCL, Go, PowerShell).
 ## How to run
 
 ### Option A — Open directly in Chrome or Edge (simplest)
-Double-click rosetta-stone.html, or drag it into Chrome/Edge.
+Double-click index.html, or drag it into Chrome/Edge.
 
 NOTE: The File System Access API (directory picker, drag-and-drop folders,
 output directory save) requires Chrome 86+ or Edge 86+. Firefox has limited
@@ -27,7 +27,7 @@ Requires Python 3.6+. No pip installs.
 
   python3 launch.py
 
-Then open: http://localhost:8000/rosetta-stone.html
+Then open: http://localhost:8000/index.html
 
 To use a different port:
   python3 launch.py --port 8080
