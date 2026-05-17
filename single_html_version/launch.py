@@ -28,7 +28,7 @@ def main():
     handler = http.server.SimpleHTTPRequestHandler
     handler.extensions_map.update({'.html': 'text/html'})
 
-    url = f'http://localhost:{args.port}/rosetta-stone.html'
+    url = f'http://localhost:{args.port}/index.html'
 
     try:
         with socketserver.TCPServer(('', args.port), handler) as httpd:
