@@ -16,6 +16,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const LEGACY_EXTS = new Set([
   'sh','bash','pl','pm','cob','cbl','f','for','f90','f95',
   'awk','tcl','csh','ksh','zsh','sas','rpg','vbs'
+  'rexx','rex','exec'
 ]);
 
 app.use(express.json({ limit: '5mb' }));
