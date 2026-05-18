@@ -344,6 +344,7 @@
           <option value="bash">Bash / Shell</option>
           <option value="perl">Perl</option>
           <option value="cobol">COBOL</option>
+          <option value="rexx">REXX (z/VM Mainframe)</option>
           <option value="fortran">Fortran</option>
           <option value="awk">AWK</option>
           <option value="tcl">Tcl</option>
@@ -475,6 +476,7 @@ const SAMPLES = {
   bash:`#!/bin/bash\n# backup.sh — backs up /var/data to /mnt/backup with timestamp\nset -euo pipefail\nSRC="/var/data"\nDEST="/mnt/backup/$(date +%Y%m%d_%H%M%S)"\nmkdir -p "$DEST"\ncp -r "$SRC/"* "$DEST/"\nfind "$DEST" -name "*.log" -mtime +30 -delete\necho "Backup complete: $DEST"`,
   perl:`#!/usr/bin/perl\n# parse_logs.pl — counts 5xx errors per IP in Apache log\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
   cobol:`       IDENTIFICATION DIVISION.\n       PROGRAM-ID. CALC-TAX.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-INCOME PIC 9(7)V99.\n       01 WS-TAX    PIC 9(7)V99.\n       PROCEDURE DIVISION.\n           MOVE 55000.00 TO WS-INCOME\n           COMPUTE WS-TAX = WS-INCOME * 0.22\n           DISPLAY "Tax: " WS-TAX\n           STOP RUN.`,
+  rexx: `/* REXX — greet.rexx: display system info via z/VM CP commands */\nARG username\nIF username = '' THEN username = 'OPERATOR'\nSAY 'Hello,' username'!'\nADDRESS COMMAND 'CP QUERY TIME'\nADDRESS COMMAND 'CP QUERY STORAGE'\nPULL response\nSAY 'Response:' response\nEXIT 0`,
   awk:`#!/usr/bin/awk -f\n# sum_col.awk — sums column 3 grouped by column 1\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
   fortran:`      PROGRAM STATS\n      IMPLICIT NONE\n      INTEGER I,N\n      REAL X(100),SUMX,MEAN\n      N=5\n      DATA X /3.0,7.0,5.0,9.0,1.0,95*0.0/\n      SUMX=0.0\n      DO 10 I=1,N\n        SUMX=SUMX+X(I)\n   10 CONTINUE\n      MEAN=SUMX/N\n      WRITE(*,*) 'Mean =',MEAN\n      END`,
   tcl:`#!/usr/bin/tclsh\nset hosts {192.168.1.1 192.168.1.2 10.0.0.1}\nforeach host $hosts {\n  set r [catch {exec ping -c 1 -W 1 $host} out]\n  puts "$host: [expr {$r==0?{UP}:{DOWN}}]"\n}`,
@@ -482,7 +484,7 @@ const SAMPLES = {
 };
 const TGT_LABELS={ansible:'Ansible YAML',python3:'Python 3',terraform:'Terraform HCL',go:'Go',powershell:'PowerShell'};
 const TGT_EXT={ansible:'yml',python3:'py',terraform:'tf',go:'go',powershell:'ps1'};
-const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh'];
+const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh','rexx','rex','exec'];
 
 let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='anthropic';
