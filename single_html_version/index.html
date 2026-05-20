@@ -563,11 +563,18 @@ function showConnStatus(msg,ok,err) {
 }
 
 async function testConnection() {
-  showConnStatus('Testing…',false,false); savePrefs();
+  showConnStatus('Testing…', false, false);
+  savePrefs();
   try {
-    const r = await callAI('You are a test assistant.','Reply with only the word: connected',()=>{});
-    showConnStatus(r&&r.toLowerCase().includes('connected')?'Connected successfully':'Unexpected response',r&&r.toLowerCase().includes('connected'),false);
-  } catch(e){ showConnStatus('Failed: '+e.message,false,true); }
+    const r = await callAI('You are a test assistant.', 'Say hello.', ()=>{});
+    if(r && r.trim().length > 0) {
+      showConnStatus('Connected — ' + r.trim().slice(0, 40), true, false);
+    } else {
+      showConnStatus('Got empty response', false, false);
+    }
+  } catch(e) {
+    showConnStatus('Failed: ' + e.message, false, true);
+  }
 }
 
 // ─── Ollama context check ─────────────────────────────────────────
