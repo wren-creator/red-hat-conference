@@ -29,43 +29,30 @@
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1c1c1a;
-      --bg2: #252523;
-      --bg3: #2e2e2b;
-      --bg-info: #0c2a45;
-      --bg-success: #0f2a06;
-      --bg-warn: #2d1f06;
-      --bg-danger: #2d0f0f;
-      --text: #f0ede8;
-      --text2: #a8a69e;
-      --text3: #6e6d68;
-      --text-info: #85b7eb;
-      --text-success: #97c459;
-      --text-warn: #ef9f27;
-      --text-danger: #f09595;
-      --border: rgba(255,255,255,0.1);
-      --border2: rgba(255,255,255,0.2);
+      --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+      --bg-info: #0c2a45; --bg-success: #0f2a06; --bg-warn: #2d1f06; --bg-danger: #2d0f0f;
+      --text: #f0ede8; --text2: #a8a69e; --text3: #6e6d68;
+      --text-info: #85b7eb; --text-success: #97c459; --text-warn: #ef9f27; --text-danger: #f09595;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--sans); background: var(--bg3); color: var(--text); min-height: 100vh; }
   .shell { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
 
-  /* Header */
   .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
   .app-title { display: flex; align-items: center; gap: 10px; }
-  .app-title h1 { font-size: 20px; font-weight: 600; color: var(--text); }
+  .app-title h1 { font-size: 20px; font-weight: 600; }
   .app-title svg { width: 26px; height: 26px; color: var(--text2); flex-shrink: 0; }
   .app-sub { font-size: 12px; color: var(--text3); margin-bottom: 1.5rem; padding-left: 36px; }
   .header-actions { display: flex; gap: 8px; }
 
-  /* Cards */
   .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
 
-  /* Settings panel */
+  /* Settings */
   .settings-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
   .settings-panel.open { display: block; }
-  .settings-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
+  .settings-title { font-size: 13px; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
   .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   @media(max-width:600px){ .settings-grid { grid-template-columns: 1fr; } }
   .settings-section { border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem; }
@@ -74,19 +61,24 @@
   .field:last-child { margin-bottom: 0; }
   .field label { font-size: 12px; color: var(--text2); }
   .field input, .field select { width: 100%; padding: 7px 10px; font-size: 13px; font-family: var(--sans); background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
-  .field input:focus, .field select:focus { border-color: var(--border2); }
   .field input[type=password] { font-family: var(--mono); letter-spacing: 0.1em; }
-  .provider-toggle { display: flex; border: 0.5px solid var(--border2); border-radius: var(--radius); overflow: hidden; margin-bottom: 0.75rem; }
-  .prov-btn { flex: 1; padding: 7px 10px; font-size: 12px; background: none; border: none; cursor: pointer; font-family: var(--sans); color: var(--text2); transition: background 0.12s; }
-  .prov-btn.active { background: var(--bg2); color: var(--text); font-weight: 600; }
-  .prov-btn:not(:last-child) { border-right: 0.5px solid var(--border2); }
   .key-row { display: flex; gap: 6px; }
   .key-row input { flex: 1; }
   .settings-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
-  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 8px; }
-  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); }
+  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 10px; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
   .conn-dot.ok { background: #1D9E75; }
   .conn-dot.err { background: #E24B4A; }
+
+  /* Provider selector - compact dropdown style */
+  .provider-select-wrap { margin-bottom: 1rem; }
+  .provider-select-wrap label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); display: block; margin-bottom: 5px; }
+  .provider-fields { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 10px; margin-top: 8px; }
+  .provider-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 100px; margin-bottom: 10px; }
+  .badge-ollama { background: #1a1a1a; color: #fff; }
+  .badge-anthropic { background: #cc785c; color: #fff; }
+  .badge-openai { background: #10a37f; color: #fff; }
+  .badge-gemini { background: #4285f4; color: #fff; }
 
   /* Main controls */
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
@@ -94,31 +86,33 @@
   .sel-group { display: flex; flex-direction: column; gap: 5px; }
   .sel-group label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); }
   select { width: 100%; padding: 8px 10px; font-size: 13px; font-family: var(--sans); background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; cursor: pointer; }
-  select:focus { border-color: var(--border2); }
 
-  /* Mode toggle */
   .mode-toggle { display: flex; border: 0.5px solid var(--border2); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
-  .mode-btn { flex: 1; padding: 9px 12px; font-size: 13px; background: none; border: none; cursor: pointer; font-family: var(--sans); color: var(--text2); transition: background 0.12s; }
+  .mode-btn { flex: 1; padding: 9px 12px; font-size: 13px; background: none; border: none; cursor: pointer; font-family: var(--sans); color: var(--text2); }
   .mode-btn.active { background: var(--bg2); color: var(--text); font-weight: 600; }
   .mode-btn:not(:last-child) { border-right: 0.5px solid var(--border2); }
 
-  /* Section label */
   .sec-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
   .sec-action { font-size: 12px; color: var(--text-info); background: none; border: none; cursor: pointer; font-family: var(--sans); padding: 0; }
   .sec-action:hover { text-decoration: underline; }
 
-  /* Code textarea */
   textarea { width: 100%; height: 200px; font-family: var(--mono); font-size: 12.5px; resize: vertical; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; color: var(--text); line-height: 1.6; outline: none; margin-bottom: 1rem; }
-  textarea:focus { border-color: var(--border2); }
 
-  /* Drop zone */
-  .drop-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 28px 20px; text-align: center; margin-bottom: 10px; cursor: pointer; transition: background 0.12s; }
+  /* Resource warning banner - more prominent */
+  .resource-banner { border-radius: var(--radius); padding: 12px 14px; margin-bottom: 1rem; font-size: 13px; line-height: 1.6; display: none; border: 1px solid; }
+  .resource-banner.show { display: block; }
+  .resource-banner.warn { background: var(--bg-warn); color: var(--text-warn); border-color: #EF9F27; }
+  .resource-banner.block { background: var(--bg-danger); color: var(--text-danger); border-color: #F09595; }
+  .resource-banner strong { font-weight: 600; display: block; margin-bottom: 6px; }
+  .resource-banner .switch-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 14px; font-size: 12px; font-weight: 600; font-family: var(--sans); background: var(--text-danger); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; }
+  .resource-banner.warn .switch-btn { background: var(--text-warn); }
+
+  .drop-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 28px 20px; text-align: center; margin-bottom: 10px; cursor: pointer; }
   .drop-zone:hover, .drop-zone.drag-over { background: var(--bg2); }
   .drop-zone .dz-icon { font-size: 28px; color: var(--text3); margin-bottom: 6px; }
   .drop-zone p { font-size: 14px; color: var(--text2); }
   .drop-zone .sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
 
-  /* Buttons */
   .btn-row { display: flex; gap: 8px; margin-bottom: 10px; }
   .btn { padding: 8px 14px; font-size: 13px; font-family: var(--sans); background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.12s; }
   .btn:hover { background: var(--bg2); }
@@ -129,12 +123,11 @@
   .btn-primary:hover { opacity: 0.88; background: var(--text); }
   .btn-sm { padding: 4px 10px; font-size: 11px; }
 
-  /* Queue */
   .queue-wrap { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; max-height: 180px; overflow-y: auto; }
   .queue-empty { padding: 14px; font-size: 13px; color: var(--text3); text-align: center; }
   .queue-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 0.5px solid var(--border); font-size: 12.5px; }
   .queue-item:last-child { border-bottom: none; }
-  .fname { flex: 1; font-family: var(--mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .fname { flex: 1; font-family: var(--mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .qi-badge { font-size: 11px; padding: 2px 8px; border-radius: 100px; white-space: nowrap; }
   .st-pending { background: var(--bg3); color: var(--text3); border: 0.5px solid var(--border); }
   .st-running { background: var(--bg-info); color: var(--text-info); }
@@ -144,57 +137,54 @@
   .qi-remove { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 18px; line-height: 1; padding: 0 2px; }
   .qi-remove:hover { color: var(--text-danger); }
 
-  /* Out dir */
   .out-dir-row { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; }
   .out-dir-name { font-family: var(--mono); font-size: 11px; color: var(--text3); }
 
-  /* Complexity bar */
   .complexity-wrap { margin: 10px 0 1rem; display: none; }
   .cb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .cb-label { font-size: 12px; color: var(--text2); }
   .cb-score { font-size: 13px; font-weight: 600; }
   .cb-track { height: 7px; background: var(--bg3); border-radius: 100px; overflow: hidden; border: 0.5px solid var(--border); }
   .cb-fill { height: 100%; border-radius: 100px; transition: width 0.5s ease; }
-  .fill-green { background: #1D9E75; }
-  .fill-amber { background: #BA7517; }
-  .fill-red { background: #E24B4A; }
+  .fill-green { background: #1D9E75; } .fill-amber { background: #BA7517; } .fill-red { background: #E24B4A; }
 
-  /* Warning banner */
   .warn-banner { border-radius: var(--radius); padding: 10px 14px; margin-bottom: 1rem; font-size: 13px; line-height: 1.6; display: none; }
   .warn-banner.show { display: block; }
   .warn-amber { background: var(--bg-warn); color: var(--text-warn); border: 0.5px solid #EF9F27; }
   .warn-red { background: var(--bg-danger); color: var(--text-danger); border: 0.5px solid #F09595; }
   .warn-banner strong { font-weight: 600; display: block; margin-bottom: 3px; }
 
-  /* Status */
   .status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); margin-top: 8px; min-height: 20px; }
   .spinner { width: 13px; height: 13px; border: 1.5px solid var(--border2); border-top-color: var(--text2); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Tabs */
-  .tabs { display: flex; align-items: center; border-bottom: 0.5px solid var(--border); margin-top: 1.5rem; }
-  .tab { font-size: 13px; padding: 9px 14px; cursor: pointer; color: var(--text2); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--sans); white-space: nowrap; transition: color 0.12s; }
+  /* Provider indicator in header area */
+  .provider-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); margin-bottom: 1rem; }
+  .prov-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  .prov-dot.ollama { background: #888; }
+  .prov-dot.anthropic { background: #cc785c; }
+  .prov-dot.openai { background: #10a37f; }
+  .prov-dot.gemini { background: #4285f4; }
+
+  .tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-top: 1.5rem; }
+  .tab { font-size: 13px; padding: 9px 14px; cursor: pointer; color: var(--text2); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--sans); white-space: nowrap; }
   .tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
   .tab:hover:not(.active) { color: var(--text); }
   .tab-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 5px; vertical-align: middle; }
-  .dot-done { background: #1D9E75; }
-  .dot-warn { background: #BA7517; }
-  .dot-run { background: #378ADD; }
+  .dot-done { background: #1D9E75; } .dot-warn { background: #BA7517; } .dot-run { background: #378ADD; }
 
-  /* Output boxes */
   .out-box { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 46px 14px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--text); min-height: 160px; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; position: relative; margin-top: 1px; }
   .out-box.prose { font-family: var(--sans); font-size: 13.5px; line-height: 1.8; }
   .placeholder { color: var(--text3); font-family: var(--sans); font-size: 13px; }
   .out-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; }
 
-  /* Summary */
   .summary-panel { display: none; margin-top: 1.5rem; }
   .summary-panel.show { display: block; }
-  .summary-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
-  .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .summary-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
   @media(max-width:500px){ .stat-grid { grid-template-columns: 1fr 1fr; } }
   .stat-card { background: var(--bg2); border-radius: var(--radius); padding: 14px; text-align: center; border: 0.5px solid var(--border); }
-  .stat-val { font-size: 26px; font-weight: 700; color: var(--text); }
+  .stat-val { font-size: 26px; font-weight: 700; }
   .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
   .summary-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .summary-table th { text-align: left; padding: 7px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text2); border-bottom: 0.5px solid var(--border); }
@@ -206,12 +196,9 @@
   .risk-partial { background: var(--bg-warn); color: var(--text-warn); }
   .risk-manual { background: var(--bg-danger); color: var(--text-danger); }
 
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
-
-  /* Utility */
   .hidden { display: none !important; }
   .mt8 { margin-top: 8px; }
   .gap8 { display: flex; gap: 8px; }
@@ -229,8 +216,8 @@
       <h1>Legacy Code Modernizer</h1>
     </div>
     <div class="header-actions">
-      <button class="btn btn-sm" id="settings-toggle" onclick="toggleSettings()" title="Settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <button class="btn btn-sm" onclick="toggleSettings()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         Settings
       </button>
     </div>
@@ -240,7 +227,7 @@
   <!-- Settings Panel -->
   <div class="settings-panel" id="settings-panel">
     <div class="settings-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       AI Provider Settings
     </div>
 
@@ -248,18 +235,40 @@
       <!-- Provider selection -->
       <div class="settings-section">
         <h3>Provider</h3>
-        <div class="provider-toggle">
-          <button class="prov-btn active" id="prov-anthropic" onclick="setProvider('anthropic')">Anthropic API</button>
-          <button class="prov-btn" id="prov-ollama" onclick="setProvider('ollama')">Ollama (local)</button>
+
+        <!-- Compact provider dropdown -->
+        <div class="provider-select-wrap">
+          <label>Active provider</label>
+          <select id="provider-select" onchange="setProvider(this.value)">
+            <option value="ollama">🖥️ Ollama (local / sovereign)</option>
+            <option value="anthropic">🟠 Anthropic Claude</option>
+            <option value="openai">🟢 OpenAI GPT</option>
+            <option value="gemini">🔵 Google Gemini</option>
+          </select>
+        </div>
+
+        <!-- Ollama fields -->
+        <div id="fields-ollama" class="provider-fields">
+          <span class="provider-badge badge-ollama">🖥️ Ollama</span>
+          <div class="field">
+            <label>Ollama base URL</label>
+            <input type="text" id="ollama-url" value="http://localhost:11434 [localhost]" placeholder="http://localhost:11434 [localhost]">
+          </div>
+          <div class="field">
+            <label>Model name</label>
+            <input type="text" id="ollama-model" value="qwen2.5-coder:1.5b" placeholder="e.g. qwen2.5-coder:1.5b">
+          </div>
+          <p class="settings-note">Run with CORS enabled: <code style="font-family:var(--mono);font-size:10px;">OLLAMA_ORIGINS=* ollama serve</code><br>Context window is managed automatically based on script size and available resources.</p>
         </div>
 
         <!-- Anthropic fields -->
-        <div id="anthropic-fields">
+        <div id="fields-anthropic" class="provider-fields hidden">
+          <span class="provider-badge badge-anthropic">🟠 Anthropic</span>
           <div class="field">
             <label>API Key</label>
             <div class="key-row">
-              <input type="password" id="api-key" placeholder="sk-ant-api03-…" autocomplete="off" oninput="onKeyInput()">
-              <button class="btn btn-sm" onclick="toggleKeyVis()">Show</button>
+              <input type="password" id="anthropic-key" placeholder="sk-ant-api03-…" autocomplete="off">
+              <button class="btn btn-sm" onclick="toggleVis('anthropic-key',this)">Show</button>
             </div>
           </div>
           <div class="field">
@@ -270,24 +279,49 @@
               <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (fastest)</option>
             </select>
           </div>
-          <div class="gap8 mt8">
-            <button class="btn btn-sm" onclick="saveKey()">&#128274; Key storage info</button>
-            <button class="btn btn-sm" onclick="clearKey()" style="color:var(--text-danger)">Clear key from memory</button>
-          </div>
-          <p class="settings-note">&#128274; Your API key is held <strong>in memory only</strong> and is never written to disk, localStorage, or any server. It is automatically cleared when you close this tab.</p>
+          <p class="settings-note">&#128274; Key held in memory only — never written to disk. Cleared on tab close. Up to 200K token context window.</p>
         </div>
 
-        <!-- Ollama fields -->
-        <div id="ollama-fields" class="hidden">
+        <!-- OpenAI fields -->
+        <div id="fields-openai" class="provider-fields hidden">
+          <span class="provider-badge badge-openai">🟢 OpenAI</span>
           <div class="field">
-            <label>Ollama base URL</label>
-            <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+            <label>API Key</label>
+            <div class="key-row">
+              <input type="password" id="openai-key" placeholder="sk-…" autocomplete="off">
+              <button class="btn btn-sm" onclick="toggleVis('openai-key',this)">Show</button>
+            </div>
           </div>
           <div class="field">
-            <label>Model name</label>
-            <input type="text" id="ollama-model" value="qwen2.5-coder" placeholder="e.g. qwen2.5-coder, llama3.1:70b">
+            <label>Model</label>
+            <select id="openai-model">
+              <option value="gpt-4o">GPT-4o (recommended)</option>
+              <option value="gpt-4o-mini">GPT-4o mini (fastest)</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            </select>
           </div>
-          <p class="settings-note">Ollama must be running locally with CORS enabled. Run: <code style="font-family:var(--mono);font-size:11px;">OLLAMA_ORIGINS=* ollama serve</code></p>
+          <p class="settings-note">&#128274; Key held in memory only. Up to 128K token context window.</p>
+        </div>
+
+        <!-- Gemini fields -->
+        <div id="fields-gemini" class="provider-fields hidden">
+          <span class="provider-badge badge-gemini">🔵 Gemini</span>
+          <div class="field">
+            <label>API Key</label>
+            <div class="key-row">
+              <input type="password" id="gemini-key" placeholder="AIza…" autocomplete="off">
+              <button class="btn btn-sm" onclick="toggleVis('gemini-key',this)">Show</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Model</label>
+            <select id="gemini-model">
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro (1M ctx, recommended)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (fastest)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            </select>
+          </div>
+          <p class="settings-note">&#128274; Key held in memory only. Up to 1M token context window.</p>
         </div>
 
         <div class="conn-status" id="conn-status">
@@ -297,7 +331,7 @@
         </div>
       </div>
 
-      <!-- Advanced -->
+      <!-- Generation options -->
       <div class="settings-section">
         <h3>Generation options</h3>
         <div class="field">
@@ -331,12 +365,23 @@
             <option value="2000">2 seconds (rate limit safe)</option>
           </select>
         </div>
+        <div class="settings-section" style="margin-top:1rem;border:none;padding:0;">
+          <h3 style="margin-bottom:6px;">Ollama context auto-sizing</h3>
+          <p class="settings-note" style="margin-top:0;">When using Ollama, the app automatically estimates script token count and checks available context before running. If the script is too large for local resources, you will be prompted to switch to a cloud provider.</p>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Main card -->
   <div class="card">
+    <!-- Provider indicator -->
+    <div class="provider-indicator">
+      <div class="prov-dot" id="prov-indicator-dot"></div>
+      <span id="prov-indicator-label">Loading…</span>
+      <button class="sec-action" onclick="openSettings()" style="margin-left:auto;font-size:11px;">change provider</button>
+    </div>
+
     <div class="row2">
       <div class="sel-group">
         <label>Source language</label>
@@ -344,7 +389,6 @@
           <option value="bash">Bash / Shell</option>
           <option value="perl">Perl</option>
           <option value="cobol">COBOL</option>
-          <option value="rexx">REXX (z/VM Mainframe)</option>
           <option value="fortran">Fortran</option>
           <option value="awk">AWK</option>
           <option value="tcl">Tcl</option>
@@ -364,12 +408,8 @@
     </div>
 
     <div class="mode-toggle">
-      <button class="mode-btn active" id="btn-single" onclick="setMode('single')">
-        &#128196; Single file / paste
-      </button>
-      <button class="mode-btn" id="btn-batch" onclick="setMode('batch')">
-        &#128193; Directory / batch
-      </button>
+      <button class="mode-btn active" id="btn-single" onclick="setMode('single')">&#128196; Single file / paste</button>
+      <button class="mode-btn" id="btn-batch" onclick="setMode('batch')">&#128193; Directory / batch</button>
     </div>
 
     <!-- Single mode -->
@@ -378,19 +418,16 @@
         <span>Legacy source code</span>
         <button class="sec-action" onclick="loadSample()">load sample &#8594;</button>
       </div>
-      <textarea id="code-input" placeholder="Paste your legacy script here&#8230;"></textarea>
+      <textarea id="code-input" placeholder="Paste your legacy script here…"></textarea>
     </div>
 
     <!-- Batch mode -->
     <div id="batch-panel" class="hidden">
       <div class="btn-row">
-        <button class="btn" style="flex:1;" onclick="pickDirectory()">&#128193; Pick directory&#8230;</button>
-        <button class="btn" style="flex:1;" onclick="document.getElementById('fp').click()">&#128196; Pick files&#8230;</button>
+        <button class="btn" style="flex:1;" onclick="pickDirectory()">&#128193; Pick directory…</button>
+        <button class="btn" style="flex:1;" onclick="document.getElementById('fp').click()">&#128196; Pick files…</button>
       </div>
-      <input type="file" id="fp" multiple
-        accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh,.rexx,.rex,.exec"
-        style="display:none;" onchange="handleFilePicker(this)">
-
+      <input type="file" id="fp" multiple accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh" style="display:none;" onchange="handleFilePicker(this)">
       <div class="drop-zone" id="drop-zone"
            ondragover="event.preventDefault();this.classList.add('drag-over')"
            ondragleave="this.classList.remove('drag-over')"
@@ -399,22 +436,28 @@
         <p>Drop files or a folder here</p>
         <p class="sub">.sh .bash .pl .cob .f .awk .tcl .csh and more</p>
       </div>
-
       <div class="sec-label" style="margin-bottom:6px;">
         <span>Output directory</span>
         <span class="out-dir-name" id="out-dir-name">not set</span>
       </div>
       <div class="out-dir-row">
-        <button class="btn" style="flex:1;" onclick="pickOutputDir()">&#128193; Choose output directory&#8230;</button>
+        <button class="btn" style="flex:1;" onclick="pickOutputDir()">&#128193; Choose output directory…</button>
       </div>
-
       <div class="sec-label">
         File queue <span id="queue-count" style="color:var(--text3);font-weight:400;margin-left:4px;">0 files</span>
         <button class="sec-action" onclick="clearQueue()">clear all</button>
       </div>
-      <div class="queue-wrap" id="queue-list">
-        <div class="queue-empty">No files added yet</div>
-      </div>
+      <div class="queue-wrap" id="queue-list"><div class="queue-empty">No files added yet</div></div>
+    </div>
+
+    <!-- Resource warning (Ollama-specific) -->
+    <div class="resource-banner" id="resource-banner">
+      <strong id="resource-banner-title"></strong>
+      <span id="resource-banner-msg"></span>
+      <br>
+      <button class="switch-btn" onclick="openSettings()">
+        &#9889; Switch to Cloud Provider
+      </button>
     </div>
 
     <!-- Complexity -->
@@ -426,7 +469,6 @@
       <div class="cb-track"><div class="cb-fill" id="cb-fill" style="width:0%"></div></div>
     </div>
 
-    <!-- Warning -->
     <div class="warn-banner" id="warn-banner"></div>
 
     <button class="btn btn-full btn-primary" id="run-btn" onclick="runAll()">
@@ -435,12 +477,11 @@
     <div class="status-row" id="status-row"></div>
   </div>
 
-  <!-- Output tabs — CHANGED: added align-items:center and Clear button pushed to right -->
+  <!-- Output tabs -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('docs')" id="tab-docs">&#128196; Documentation<span id="ind-docs"></span></button>
     <button class="tab" onclick="switchTab('tests')" id="tab-tests">&#9878; Test script<span id="ind-tests"></span></button>
     <button class="tab" onclick="switchTab('converted')" id="tab-converted">&#60;/&#62; Converted code<span id="ind-converted"></span></button>
-    <button class="btn btn-sm" onclick="clearOutputs()" style="margin-left:auto;margin-bottom:4px;color:var(--text3);border-color:var(--border);" title="Clear all output panels">&#10005; Clear</button>
   </div>
 
   <div id="panel-docs">
@@ -472,73 +513,92 @@
 </div>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────
 const SAMPLES = {
   bash:`#!/bin/bash\n# backup.sh — backs up /var/data to /mnt/backup with timestamp\nset -euo pipefail\nSRC="/var/data"\nDEST="/mnt/backup/$(date +%Y%m%d_%H%M%S)"\nmkdir -p "$DEST"\ncp -r "$SRC/"* "$DEST/"\nfind "$DEST" -name "*.log" -mtime +30 -delete\necho "Backup complete: $DEST"`,
-  perl:`#!/usr/bin/perl\n# parse_logs.pl — counts 5xx errors per IP in Apache log\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
+  perl:`#!/usr/bin/perl\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){ printf "%s\\t%d\\n",$ip,$counts{$ip}; }`,
   cobol:`       IDENTIFICATION DIVISION.\n       PROGRAM-ID. CALC-TAX.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-INCOME PIC 9(7)V99.\n       01 WS-TAX    PIC 9(7)V99.\n       PROCEDURE DIVISION.\n           MOVE 55000.00 TO WS-INCOME\n           COMPUTE WS-TAX = WS-INCOME * 0.22\n           DISPLAY "Tax: " WS-TAX\n           STOP RUN.`,
-  rexx: `/* REXX — greet.rexx: display system info via z/VM CP commands */\nARG username\nIF username = '' THEN username = 'OPERATOR'\nSAY 'Hello,' username'!'\nADDRESS COMMAND 'CP QUERY TIME'\nADDRESS COMMAND 'CP QUERY STORAGE'\nPULL response\nSAY 'Response:' response\nEXIT 0`,
-  awk:`#!/usr/bin/awk -f\n# sum_col.awk — sums column 3 grouped by column 1\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
+  awk:`#!/usr/bin/awk -f\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
   fortran:`      PROGRAM STATS\n      IMPLICIT NONE\n      INTEGER I,N\n      REAL X(100),SUMX,MEAN\n      N=5\n      DATA X /3.0,7.0,5.0,9.0,1.0,95*0.0/\n      SUMX=0.0\n      DO 10 I=1,N\n        SUMX=SUMX+X(I)\n   10 CONTINUE\n      MEAN=SUMX/N\n      WRITE(*,*) 'Mean =',MEAN\n      END`,
   tcl:`#!/usr/bin/tclsh\nset hosts {192.168.1.1 192.168.1.2 10.0.0.1}\nforeach host $hosts {\n  set r [catch {exec ping -c 1 -W 1 $host} out]\n  puts "$host: [expr {$r==0?{UP}:{DOWN}}]"\n}`,
   csh:`#!/bin/csh\nset APP="myapp"\nset DIR="/opt/$APP"\nif(-d $DIR) then\n  /etc/init.d/$APP stop\nendif\ncp -r ./dist/* $DIR/\n/etc/init.d/$APP start`
 };
 const TGT_LABELS={ansible:'Ansible YAML',python3:'Python 3',terraform:'Terraform HCL',go:'Go',powershell:'PowerShell'};
 const TGT_EXT={ansible:'yml',python3:'py',terraform:'tf',go:'go',powershell:'ps1'};
-const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh','rexx','rex','exec'];
+const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh'];
 
-let mode='single', queue=[], outputDirHandle=null, batchResults=[];
-let provider='anthropic';
+// Provider display info
+const PROVIDER_INFO = {
+  ollama:    { label: 'Ollama (local)',     cls: 'ollama',    ctx: null },
+  anthropic: { label: 'Anthropic Claude',  cls: 'anthropic', ctx: 200000 },
+  openai:    { label: 'OpenAI GPT',        cls: 'openai',    ctx: 128000 },
+  gemini:    { label: 'Google Gemini',     cls: 'gemini',    ctx: 1000000 }
+};
+
+// ─── State ────────────────────────────────────────────────────────
+let provider = 'ollama';
+let mode = 'single';
+let queue = [], batchResults = [];
+let outputDirHandle = null;
+let runBlocked = false; // true when Ollama resource check fails
 
 // ─── Init ─────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  const savedProv = localStorage.getItem('rs_provider') || 'anthropic';
-  setProvider(savedProv);
-  const savedModel = localStorage.getItem('rs_anthropic_model');
-  if (savedModel) document.getElementById('anthropic-model').value = savedModel;
-  const savedOllamaUrl = localStorage.getItem('rs_ollama_url');
-  if (savedOllamaUrl) document.getElementById('ollama-url').value = savedOllamaUrl;
-  const savedOllamaModel = localStorage.getItem('rs_ollama_model');
-  if (savedOllamaModel) document.getElementById('ollama-model').value = savedOllamaModel;
+  const saved = localStorage.getItem('rs_provider') || 'ollama';
+  document.getElementById('provider-select').value = saved;
+  setProvider(saved, false);
+
+  // Restore non-sensitive prefs
+  const prefs = ['ollama-url','ollama-model','anthropic-model','openai-model','gemini-model','max-tokens','temperature','skip-complexity','batch-delay'];
+  prefs.forEach(id => { const v = localStorage.getItem('rs_'+id); if(v) { const el=document.getElementById(id); if(el) el.value=v; } });
+
   loadSample();
+  updateProviderIndicator();
 });
 
 // ─── Settings ─────────────────────────────────────────────────────
-function toggleSettings() {
-  document.getElementById('settings-panel').classList.toggle('open');
+function toggleSettings() { document.getElementById('settings-panel').classList.toggle('open'); }
+function openSettings() {
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-panel').scrollIntoView({behavior:'smooth', block:'start'});
 }
-function setProvider(p) {
+
+function setProvider(p, save=true) {
   provider = p;
-  localStorage.setItem('rs_provider', p);
-  document.getElementById('prov-anthropic').classList.toggle('active', p==='anthropic');
-  document.getElementById('prov-ollama').classList.toggle('active', p==='ollama');
-  document.getElementById('anthropic-fields').classList.toggle('hidden', p!=='anthropic');
-  document.getElementById('ollama-fields').classList.toggle('hidden', p!=='ollama');
+  if(save) localStorage.setItem('rs_provider', p);
+  // Show only relevant fields
+  ['ollama','anthropic','openai','gemini'].forEach(id => {
+    document.getElementById('fields-'+id).classList.toggle('hidden', id !== p);
+  });
   resetConnStatus();
+  updateProviderIndicator();
+  clearResourceBanner();
+  // Re-enable run button when switching providers
+  runBlocked = false;
+  document.getElementById('run-btn').disabled = false;
 }
+
+function updateProviderIndicator() {
+  const info = PROVIDER_INFO[provider] || PROVIDER_INFO.ollama;
+  const dot = document.getElementById('prov-indicator-dot');
+  const label = document.getElementById('prov-indicator-label');
+  dot.className = 'prov-dot ' + info.cls;
+  label.textContent = 'Provider: ' + info.label + (info.ctx ? ` · Up to ${(info.ctx/1000).toFixed(0)}K token context` : ' · Context auto-managed');
+}
+
 function savePrefs() {
-  localStorage.setItem('rs_anthropic_model', document.getElementById('anthropic-model').value);
-  localStorage.setItem('rs_ollama_url', document.getElementById('ollama-url').value);
-  localStorage.setItem('rs_ollama_model', document.getElementById('ollama-model').value);
+  const ids = ['ollama-url','ollama-model','anthropic-model','openai-model','gemini-model','max-tokens','temperature','skip-complexity','batch-delay'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el) localStorage.setItem('rs_'+id, el.value); });
 }
-function onKeyInput() { resetConnStatus(); }
-function resetConnStatus() {
-  document.getElementById('conn-dot').className = 'conn-dot';
-  document.getElementById('conn-label').textContent = 'Not tested';
-}
-function toggleKeyVis() {
-  const inp = document.getElementById('api-key');
-  const btn = event.target;
+
+function toggleVis(inputId, btn) {
+  const inp = document.getElementById(inputId);
   inp.type = inp.type === 'password' ? 'text' : 'password';
   btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
 }
-function saveKey() {
-  alert('Your API key is held in memory only and will not be saved to disk. It will be cleared when you close this tab — this is by design for security.');
-}
-function clearKey() {
-  document.getElementById('api-key').value = '';
-  resetConnStatus();
-  showConnStatus('Key cleared from memory.', false, false);
+function resetConnStatus() {
+  document.getElementById('conn-dot').className = 'conn-dot';
+  document.getElementById('conn-label').textContent = 'Not tested';
 }
 function showConnStatus(msg, ok, err) {
   const dot = document.getElementById('conn-dot');
@@ -550,44 +610,149 @@ async function testConnection() {
   savePrefs();
   try {
     const r = await callAI('You are a test assistant.', 'Reply with only the word: connected', ()=>{});
-    if (r && r.toLowerCase().includes('connected')) {
-      showConnStatus('Connected successfully', true, false);
-    } else {
-      showConnStatus('Got response but unexpected content', false, false);
-    }
-  } catch(e) {
-    showConnStatus('Failed: ' + e.message, false, true);
-  }
+    if(r && r.toLowerCase().includes('connected')) showConnStatus('Connected successfully', true, false);
+    else showConnStatus('Got response but unexpected content', false, false);
+  } catch(e) { showConnStatus('Failed: ' + e.message, false, true); }
 }
 
-// ─── AI call (Anthropic or Ollama) ────────────────────────────────
+// ─── Resource banner ──────────────────────────────────────────────
+function showResourceBanner(type, title, msg) {
+  const el = document.getElementById('resource-banner');
+  el.className = 'resource-banner show ' + type;
+  document.getElementById('resource-banner-title').textContent = title;
+  document.getElementById('resource-banner-msg').textContent = msg;
+}
+function clearResourceBanner() {
+  document.getElementById('resource-banner').className = 'resource-banner';
+}
+
+// ─── Ollama context check ─────────────────────────────────────────
+function estimateTokens(text) {
+  // ~4 chars per token is a reasonable approximation
+  return Math.ceil(text.length / 4);
+}
+
+async function checkOllamaResources(code) {
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
+  const estimatedTokens = estimateTokens(code);
+
+  // We need tokens for: system prompt + user prompt (code) + response
+  // Add ~20% overhead for the prompts around the code
+  const totalNeeded = Math.ceil(estimatedTokens * 1.2) + 500;
+
+  let currentCtx = 4096; // Ollama default if we can't query
+  let modelSize = null;
+
+  // Try to get currently loaded model context from /api/ps
+  try {
+    const psResp = await fetch(base + '/api/ps', { signal: AbortSignal.timeout(3000) });
+    if(psResp.ok) {
+      const psData = await psResp.json();
+      const models = psData.models || [];
+      if(models.length > 0) {
+        // Get context window of loaded model
+        const loaded = models[0];
+        if(loaded.details && loaded.details.parameter_size) {
+          // Try to get ctx from model info
+          currentCtx = loaded.context_length || 4096;
+        }
+        // Get model size in bytes to estimate VRAM usage
+        modelSize = loaded.size || null;
+      }
+    }
+  } catch(e) {
+    // Can't reach Ollama or timed out — proceed with defaults
+    console.warn('Could not query Ollama /api/ps:', e.message);
+  }
+
+  // Try to get model info for better context estimate
+  try {
+    const modelName = document.getElementById('ollama-model').value.trim();
+    const showResp = await fetch(base + '/api/show', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name: modelName}),
+      signal: AbortSignal.timeout(3000)
+    });
+    if(showResp.ok) {
+      const showData = await showResp.json();
+      // Extract context length from model info
+      const params = showData.model_info || {};
+      const ctxKey = Object.keys(params).find(k => k.includes('context_length'));
+      if(ctxKey) currentCtx = params[ctxKey];
+      // Also check parameters string
+      if(showData.parameters) {
+        const ctxMatch = showData.parameters.match(/num_ctx\s+(\d+)/);
+        if(ctxMatch) currentCtx = parseInt(ctxMatch[1]);
+      }
+    }
+  } catch(e) {
+    console.warn('Could not query Ollama /api/show:', e.message);
+  }
+
+  // Decision logic
+  if(totalNeeded <= currentCtx) {
+    // Fits — send with current context, no warning needed
+    return { ok: true, numCtx: currentCtx, estimatedTokens };
+  }
+
+  // Doesn't fit in current context — can we increase it?
+  // Estimate: model needs ~modelSize bytes of VRAM, each 1K ctx needs ~500MB more
+  // For safety we cap auto-increase at 16384 and only suggest it if model is small enough
+  const MAX_SAFE_CTX = 16384;
+
+  if(totalNeeded <= MAX_SAFE_CTX) {
+    // We can try to auto-increase via per-request num_ctx
+    // Warn the user it may cause a reload delay but allow it
+    return {
+      ok: true,
+      numCtx: Math.min(totalNeeded + 1024, MAX_SAFE_CTX), // add buffer
+      estimatedTokens,
+      warned: true,
+      warnMsg: `Script is ~${estimatedTokens.toLocaleString()} tokens. Auto-increasing Ollama context to ${Math.min(totalNeeded + 1024, MAX_SAFE_CTX).toLocaleString()} — this may cause a brief reload delay.`
+    };
+  }
+
+  // Too large even for MAX_SAFE_CTX — block and suggest cloud
+  return {
+    ok: false,
+    estimatedTokens,
+    currentCtx,
+    needed: totalNeeded
+  };
+}
+
+// ─── AI providers ─────────────────────────────────────────────────
 async function callAI(system, user, onChunk) {
-  if (provider === 'anthropic') {
-    return callAnthropic(system, user, onChunk);
-  } else {
-    return callOllama(system, user, onChunk);
+  switch(provider) {
+    case 'anthropic': return callAnthropic(system, user, onChunk);
+    case 'openai':    return callOpenAI(system, user, onChunk);
+    case 'gemini':    return callGemini(system, user, onChunk);
+    case 'ollama':    return callOllama(system, user, onChunk);
+    default: throw new Error('Unknown provider: ' + provider);
   }
 }
 
 async function callAnthropic(system, user, onChunk) {
-  const key = document.getElementById('api-key').value.trim();
-  if (!key) throw new Error('No Anthropic API key set. Open Settings and enter your key.');
+  const key = document.getElementById('anthropic-key').value.trim();
+  if(!key) throw new Error('No Anthropic API key set. Open Settings and enter your key.');
   const model = document.getElementById('anthropic-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('https://api.anthropic.com/v1/messages [api.anthropic.com]', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': key,
-      'anthropic-version': '2023-06-01'
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body: JSON.stringify({ model, max_tokens: maxTok, stream: true, temperature: temp, system, messages: [{ role:'user', content: user }] })
+    body: JSON.stringify({ model, max_tokens: maxTok, stream: true, temperature: temp, system, messages: [{role:'user',content:user}] })
   });
 
-  if (!resp.ok) {
-    const err = await resp.json().catch(()=>({ error:{ message: resp.statusText } }));
+  if(!resp.ok) {
+    const err = await resp.json().catch(()=>({error:{message:resp.statusText}}));
     throw new Error(err?.error?.message || 'Anthropic API error ' + resp.status);
   }
 
@@ -595,50 +760,147 @@ async function callAnthropic(system, user, onChunk) {
   const dec = new TextDecoder();
   let buf='', full='';
   while(true) {
-    const {done, value} = await reader.read(); if(done) break;
-    buf += dec.decode(value, {stream:true});
+    const {done,value} = await reader.read(); if(done) break;
+    buf += dec.decode(value,{stream:true});
     const lines = buf.split('\n'); buf = lines.pop();
     for(const line of lines) {
       if(!line.startsWith('data: ')) continue;
       const d = line.slice(6).trim(); if(d==='[DONE]') continue;
-      try { const delta = JSON.parse(d)?.delta?.text||''; if(delta){full+=delta; onChunk(full);} } catch{}
+      try { const delta=JSON.parse(d)?.delta?.text||''; if(delta){full+=delta;onChunk(full);} } catch{}
     }
   }
   return full;
 }
 
-async function callOllama(system, user, onChunk) {
-  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
-  const model = document.getElementById('ollama-model').value.trim();
+async function callOpenAI(system, user, onChunk) {
+  const key = document.getElementById('openai-key').value.trim();
+  if(!key) throw new Error('No OpenAI API key set. Open Settings and enter your key.');
+  const model = document.getElementById('openai-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
 
-  const resp = await fetch(base + '/v1/chat/completions', {
+  const resp = await fetch('https://api.openai.com/v1/chat/completions [api.openai.com]', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ollama' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
     body: JSON.stringify({
-      model, stream: true, temperature: temp,
-      max_tokens: maxTok,
-      messages: [{ role:'system', content: system }, { role:'user', content: user }]
+      model, stream: true, temperature: temp, max_tokens: maxTok,
+      messages: [{role:'system',content:system},{role:'user',content:user}]
     })
   });
 
-  if (!resp.ok) throw new Error('Ollama error ' + resp.status + ' — is Ollama running with CORS enabled?');
+  if(!resp.ok) {
+    const err = await resp.json().catch(()=>({error:{message:resp.statusText}}));
+    throw new Error(err?.error?.message || 'OpenAI API error ' + resp.status);
+  }
 
   const reader = resp.body.getReader();
   const dec = new TextDecoder();
   let buf='', full='';
   while(true) {
-    const {done, value} = await reader.read(); if(done) break;
-    buf += dec.decode(value, {stream:true});
+    const {done,value} = await reader.read(); if(done) break;
+    buf += dec.decode(value,{stream:true});
     const lines = buf.split('\n'); buf = lines.pop();
     for(const line of lines) {
       if(!line.startsWith('data: ')) continue;
       const d = line.slice(6).trim(); if(d==='[DONE]') continue;
-      try { const delta = JSON.parse(d)?.choices?.[0]?.delta?.content||''; if(delta){full+=delta; onChunk(full);} } catch{}
+      try { const delta=JSON.parse(d)?.choices?.[0]?.delta?.content||''; if(delta){full+=delta;onChunk(full);} } catch{}
     }
   }
   return full;
+}
+
+async function callGemini(system, user, onChunk) {
+  const key = document.getElementById('gemini-key').value.trim();
+  if(!key) throw new Error('No Gemini API key set. Open Settings and enter your key.');
+  const model = document.getElementById('gemini-model').value;
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const temp = parseFloat(document.getElementById('temperature').value);
+
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}` [generativelanguage.googleapis.com], {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { temperature: temp, maxOutputTokens: maxTok }
+    })
+  });
+
+  if(!resp.ok) {
+    const err = await resp.json().catch(()=>({error:{message:resp.statusText}}));
+    throw new Error(err?.error?.message || 'Gemini API error ' + resp.status);
+  }
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf='', full='';
+  while(true) {
+    const {done,value} = await reader.read(); if(done) break;
+    buf += dec.decode(value,{stream:true});
+    const lines = buf.split('\n'); buf = lines.pop();
+    for(const line of lines) {
+      if(!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim();
+      try {
+        const parsed = JSON.parse(d);
+        const delta = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if(delta){ full+=delta; onChunk(full); }
+      } catch{}
+    }
+  }
+  return full;
+}
+
+async function callOllama(system, user, onChunk, numCtxOverride=null) {
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
+  const model = document.getElementById('ollama-model').value.trim();
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const temp = parseFloat(document.getElementById('temperature').value);
+
+  const body = {
+    model, stream: true, temperature: temp,
+    max_tokens: maxTok,
+    messages: [{role:'system',content:system},{role:'user',content:user}]
+  };
+
+  // Apply auto-sized context if provided
+  if(numCtxOverride) {
+    body.options = { num_ctx: numCtxOverride };
+  }
+
+  const resp = await fetch(base + '/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ollama' },
+    body: JSON.stringify(body)
+  });
+
+  if(!resp.ok) throw new Error('Ollama error ' + resp.status + ' — is Ollama running with CORS enabled? (OLLAMA_ORIGINS=* ollama serve)');
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf='', full='';
+  while(true) {
+    const {done,value} = await reader.read(); if(done) break;
+    buf += dec.decode(value,{stream:true});
+    const lines = buf.split('\n'); buf = lines.pop();
+    for(const line of lines) {
+      if(!line.startsWith('data: ')) continue;
+      const d = line.slice(6).trim(); if(d==='[DONE]') continue;
+      try { const delta=JSON.parse(d)?.choices?.[0]?.delta?.content||''; if(delta){full+=delta;onChunk(full);} } catch{}
+    }
+  }
+  return full;
+}
+
+// ─── Ollama-aware callAI wrapper ──────────────────────────────────
+// Used during processing — passes the pre-checked numCtx
+let _ollamaNumCtx = null;
+
+async function callAIWithCtx(system, user, onChunk) {
+  if(provider === 'ollama' && _ollamaNumCtx) {
+    return callOllama(system, user, onChunk, _ollamaNumCtx);
+  }
+  return callAI(system, user, onChunk);
 }
 
 // ─── Mode / UI ────────────────────────────────────────────────────
@@ -655,7 +917,7 @@ function loadSample() { document.getElementById('code-input').value = SAMPLES[do
 function onSrcChange() { const v=document.getElementById('code-input').value.trim(); if(!v||Object.values(SAMPLES).includes(v)) loadSample(); }
 function isLegacy(name) { return LEGACY_EXTS.includes(name.split('.').pop().toLowerCase()); }
 function switchTab(tab) {
-  ['docs','tests','converted'].forEach(t => {
+  ['docs','tests','converted'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
     document.getElementById('panel-'+t).classList.toggle('hidden', t!==tab);
   });
@@ -665,8 +927,6 @@ function showStatus(msg, spinning) {
   const r = document.getElementById('status-row');
   r.innerHTML = msg ? (spinning ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`) : '';
 }
-
-// ─── CHANGED: setOutput now auto-scrolls to bottom on each chunk ──
 function setOutput(tab, text, prose) {
   const el = document.getElementById('out-'+tab);
   el.className = 'out-box' + (prose ? ' prose' : '');
@@ -683,22 +943,10 @@ function setOutput(tab, text, prose) {
     acts.appendChild(dl);
   }
   el.style.position='relative'; el.insertBefore(acts, el.firstChild);
-  // Auto-scroll to bottom as content streams in
-  el.scrollTop = el.scrollHeight;
 }
-
-// ─── ADDED: Clear all output panels, dots, complexity, warning ────
-function clearOutputs() {
-  ['docs','tests','converted'].forEach(t => { setOutput(t,'',false); setDot(t,''); });
-  document.getElementById('complexity-wrap').style.display = 'none';
-  document.getElementById('warn-banner').className = 'warn-banner';
-  document.getElementById('status-row').innerHTML = '';
-  document.getElementById('summary-panel').classList.remove('show');
-}
-
 function downloadText(text, filename) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
+  a.href = URL.createObjectURL(new Blob([text],{type:'text/plain'}));
   a.download = filename; a.click(); URL.revokeObjectURL(a.href);
 }
 function showComplexity(score, label, level) {
@@ -718,8 +966,8 @@ function showWarning(level, issues) {
 
 // ─── Queue / File I/O ─────────────────────────────────────────────
 function addToQueue(name, content) {
-  if(queue.find(f=>f.name===name)) return;
-  queue.push({name, content, status:'pending', result:null});
+  if(queue.find(f=>f.name [f.name]===name)) return;
+  queue.push({name, content, status:'pending'});
   renderQueue();
 }
 function removeFromQueue(i) { queue.splice(i,1); renderQueue(); }
@@ -733,7 +981,7 @@ function renderQueue() {
   const stTxt={pending:'queued',running:'processing…',done:'done',warn:'needs review',error:'error'};
   queue.forEach((f,i)=>{
     const row=document.createElement('div'); row.className='queue-item';
-    row.innerHTML=`<span class="fname" title="${f.name}">${f.name}</span>`+
+    row.innerHTML=`<span class="fname" title="${f.name [f.name]}">${f.name [f.name]}</span>`+
       `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>`+
       (f.status==='pending'?`<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>`:'');
     list.appendChild(row);
@@ -744,13 +992,13 @@ async function pickDirectory() {
     const dh = await window.showDirectoryPicker({mode:'read'});
     let c=0;
     for await(const e of dh.values()) {
-      if(e.kind==='file'&&isLegacy(e.name)){ const f=await e.getFile(); addToQueue(f.name,await f.text()); c++; }
+      if(e.kind==='file'&&isLegacy(e.name [e.name])){ const f=await e.getFile(); addToQueue(f.name [f.name],await f.text()); c++; }
     }
     if(!c) showStatus('No recognized legacy files found in that directory.',false);
-  } catch(e){ if(e.name!=='AbortError') showStatus('Directory access failed: '+e.message,false); }
+  } catch(e){ if(e.name [e.name]!=='AbortError') showStatus('Directory access failed: '+e.message,false); }
 }
 async function handleFilePicker(input) {
-  for(const f of input.files) if(isLegacy(f.name)) addToQueue(f.name,await f.text());
+  for(const f of input.files) if(isLegacy(f.name [f.name])) addToQueue(f.name [f.name],await f.text());
   input.value='';
 }
 async function handleDrop(e) {
@@ -759,14 +1007,14 @@ async function handleDrop(e) {
     if(item.kind!=='file') continue;
     if(item.getAsFileSystemHandle){
       const h=await item.getAsFileSystemHandle();
-      if(h.kind==='directory'){ for await(const en of h.values()) if(en.kind==='file'&&isLegacy(en.name)){const f=await en.getFile(); addToQueue(f.name,await f.text());} }
-      else{ const f=await h.getFile(); if(isLegacy(f.name)) addToQueue(f.name,await f.text()); }
-    } else { const f=item.getAsFile(); if(f&&isLegacy(f.name)) addToQueue(f.name,await f.text()); }
+      if(h.kind==='directory'){ for await(const en of h.values()) if(en.kind==='file'&&isLegacy(en.name [en.name])){const f=await en.getFile();addToQueue(f.name [f.name],await f.text());} }
+      else { const f=await h.getFile(); if(isLegacy(f.name [f.name])) addToQueue(f.name [f.name],await f.text()); }
+    } else { const f=item.getAsFile(); if(f&&isLegacy(f.name [f.name])) addToQueue(f.name [f.name],await f.text()); }
   }
 }
 async function pickOutputDir() {
   try { outputDirHandle=await window.showDirectoryPicker({mode:'readwrite'}); document.getElementById('out-dir-name').textContent=outputDirHandle.name+'/'; }
-  catch(e){ if(e.name!=='AbortError') showStatus('Could not access output directory.',false); }
+  catch(e){ if(e.name [e.name]!=='AbortError') showStatus('Could not access output directory.',false); }
 }
 async function saveFile(base, suffix, content) {
   if(!outputDirHandle) return;
@@ -777,7 +1025,7 @@ async function saveFile(base, suffix, content) {
 const SYS = 'You are a senior software engineer. Be concise and direct. For documentation use plain text with labeled sections — no markdown headers or fences. For code output raw code only, no backtick fences, no preamble.';
 
 async function assessComplexity(code, srcLabel, tgtLabel) {
-  const raw = await callAI(
+  const raw = await callAIWithCtx(
     'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation.',
     `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 is trivial, 100 is practically impossible to automate cleanly. Issues = specific blockers (max 4). Empty array if none.\n\nScript:\n${code}`,
     ()=>{}
@@ -804,7 +1052,7 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName) {
 
   switchTab('docs'); setDot('docs','dot-run');
   showStatus('Generating documentation…', true);
-  const docs = await callAI(SYS,
+  const docs = await callAIWithCtx(SYS,
     `Analyze this ${srcLabel} script and write developer documentation.\n\n1. PURPOSE — what it does\n2. INPUTS — args, env vars, files read\n3. OUTPUTS — what it produces or modifies\n4. LOGIC WALKTHROUGH — key steps\n5. KNOWN RISKS — fragility, assumptions, hardcoded values\n6. MIGRATION NOTES — specific challenges converting to ${tgtLabel}${complexity.issues.length?'\n\nKnown migration blockers:\n'+complexity.issues.join('\n'):''}`,
     t=>setOutput('docs',t,true));
   setDot('docs', complexity.level==='high'?'dot-warn':'dot-done');
@@ -813,17 +1061,16 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName) {
   switchTab('tests'); setDot('tests','dot-run');
   showStatus('Generating test script…', true);
   const testLang = ['python3','go'].includes(tgt)?tgt:'bash';
-  const ansibleLintRequirement = tgt==='ansible' ? `\n\nREQUIRED: The test script MUST include an ansible-lint section that:\n1. Checks that ansible-lint is installed (skip with a warning if not found, do not fail)\n2. Runs: ansible-lint <playbook_file> and captures the exit code\n3. Reports PASS if exit code is 0, WARN (not FAIL) if ansible-lint is not installed, FAIL if lint errors are found\n4. This ansible-lint block must always be the last test section, labelled clearly as "ANSIBLE-LINT VALIDATION"` : '';
-  const tests = await callAI(SYS,
-    `Write a bash test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw bash code. Include tests for each behavior, edge cases, and clear test names.${ansibleLintRequirement}\n\nOriginal:\n${code}`,
+  const tests = await callAIWithCtx(SYS,
+    `Write a ${testLang==='python3'?'pytest':testLang==='go'?'Go test':'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw code. Include tests for each behavior, edge cases, and clear test names.\n\nOriginal:\n${code}`,
     t=>setOutput('tests',t,false));
   setDot('tests','dot-done');
   if(baseName) await saveFile(baseName,'_test.'+testExt,tests);
 
   switchTab('converted'); setDot('converted','dot-run');
   showStatus('Converting to '+tgtLabel+'…', true);
-  const manualNote = complexity.manual_required ? '\nIMPORTANT: Some parts cannot be automatically converted. Insert clear # TODO: MANUAL REVIEW comments where human intervention is required, explaining what needs to be done.' : '';
-  const converted = await callAI(SYS,
+  const manualNote = complexity.manual_required ? '\nIMPORTANT: Insert clear # TODO: MANUAL REVIEW comments where human intervention is required, explaining what needs to be done.' : '';
+  const converted = await callAIWithCtx(SYS,
     `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY raw ${tgtLabel} code, no fences.`+
     (tgt==='ansible'?'\nUse official Ansible modules (not shell/command). Every task needs a descriptive name. Use variables for hardcoded values.':'')+
     (tgt==='python3'?'\nUse argparse for CLI args. Use subprocess.run() for shell commands.':'')+
@@ -832,103 +1079,7 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName) {
   setDot('converted', complexity.manual_required?'dot-warn':'dot-done');
   if(baseName) await saveFile(baseName,'.'+ext,converted);
 
-  // ── Wiki Markdown (assembled locally, no extra API call) ─────────
-  if(baseName) {
-    showStatus('Writing wiki Markdown…', true);
-    const wikiMd = buildWikiMd({baseName, srcLabel, tgtLabel, ext, complexity, docs, converted, tgt});
-    await saveFile(baseName,'_wiki.md', wikiMd);
-  }
-
   return {docs, tests, converted, complexity};
-}
-
-// ─── Build wiki Markdown from already-generated content ────────────────────
-function buildWikiMd({ baseName, srcLabel, tgtLabel, ext, complexity, docs, converted, tgt }) {
-  const now = new Date().toISOString().slice(0,10);
-  const complexityBadge = {low:'\u2705 Clean', medium:'\u26a0\ufe0f Partial', high:'\ud83d\udd34 Manual required'}[complexity.level] || '\u2753 Unknown';
-
-  // Parse the plain-text docs into labelled sections
-  const sections = {};
-  let currentKey = null;
-  const sectionHeaders = ['PURPOSE','INPUTS','OUTPUTS','LOGIC WALKTHROUGH','KNOWN RISKS','MIGRATION NOTES'];
-  for(const line of docs.split('\n')) {
-    const header = sectionHeaders.find(h => line.trim().toUpperCase().startsWith(h));
-    if(header) { currentKey = header; sections[header] = ''; }
-    else if(currentKey) { sections[currentKey] += line + '\n'; }
-  }
-  const sec = (h) => (sections[h]||'').trim() || '_Not documented._';
-
-  const issuesList = complexity.issues && complexity.issues.length
-    ? complexity.issues.map(i => `- ${i}`).join('\n')
-    : '- None identified';
-
-  const ansibleLintSection = tgt === 'ansible' ? `
-## Ansible-Lint Validation
-
-> Run the generated test script to execute \`ansible-lint\` against the playbook.
-> The test script will report **PASS**, **WARN** (not installed), or **FAIL** (lint errors).
-
-\`\`\`bash
-bash ${baseName}_test.sh
-\`\`\`
-` : '';
-
-  const codeLang = {ansible:'yaml', python3:'python', terraform:'hcl', go:'go', powershell:'powershell'}[tgt] || tgt;
-
-  return `# ${baseName}
-
-> **Migration:** ${srcLabel} \u2192 ${tgtLabel}
-> **Date:** ${now}
-> **Complexity:** ${complexityBadge} (${complexity.score}/100)
-> **Output file:** \`${baseName}.${ext}\`
-
----
-
-## Purpose
-
-${sec('PURPOSE')}
-
-## Inputs
-
-${sec('INPUTS')}
-
-## Outputs
-
-${sec('OUTPUTS')}
-
-## Logic Walkthrough
-
-${sec('LOGIC WALKTHROUGH')}
-
-## Known Risks
-
-${sec('KNOWN RISKS')}
-
-## Migration Notes
-
-${sec('MIGRATION NOTES')}
-
-## Conversion Complexity
-
-| Field | Value |
-|---|---|
-| Score | ${complexity.score} / 100 |
-| Level | ${complexity.label} |
-| Manual review required | ${complexity.manual_required ? 'Yes' : 'No'} |
-
-### Blockers identified
-
-${issuesList}
-${ansibleLintSection}
-## Converted Code
-
-\`\`\`${codeLang}
-${converted.trim()}
-\`\`\`
-
----
-_Generated by Rosetta Stone Legacy Code Modernizer_
-`;
 }
 
 // ─── Run ──────────────────────────────────────────────────────────
@@ -938,7 +1089,46 @@ async function runAll() {
   const tgt = document.getElementById('tgt-lang').value;
   const tgtLabel = TGT_LABELS[tgt];
   const btn = document.getElementById('run-btn');
-  btn.disabled=true;
+
+  savePrefs();
+  clearResourceBanner();
+  _ollamaNumCtx = null;
+
+  // ── Ollama resource pre-check ──────────────────────────────────
+  if(provider === 'ollama') {
+    const code = mode==='single'
+      ? document.getElementById('code-input').value.trim()
+      : queue.map(f=>f.content).join('\n');
+
+    if(!code) { alert(mode==='single'?'Paste some legacy code first.':'No files in queue.'); return; }
+
+    showStatus('Checking Ollama resources…', true);
+    const check = await checkOllamaResources(code);
+
+    if(!check.ok) {
+      // BLOCK — too large for any safe context increase
+      showResourceBanner('block',
+        `⛔ Script too large for local resources`,
+        `Your script is ~${check.estimatedTokens.toLocaleString()} tokens but the maximum safe context for your hardware is ~${check.currentCtx.toLocaleString()} tokens. Switch to a cloud provider (Anthropic, OpenAI, or Gemini) to process this script.`
+      );
+      showStatus('', false);
+      runBlocked = true;
+      return;
+    }
+
+    if(check.warned) {
+      // WARN but allow — auto-increasing context
+      showResourceBanner('warn',
+        `⚠️ Large script detected`,
+        check.warnMsg
+      );
+      _ollamaNumCtx = check.numCtx;
+    }
+  }
+
+  // ── Proceed with generation ────────────────────────────────────
+  btn.disabled = true;
+  runBlocked = false;
   ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
   document.getElementById('complexity-wrap').style.display='none';
   document.getElementById('warn-banner').className='warn-banner';
@@ -948,17 +1138,17 @@ async function runAll() {
   try {
     if(mode==='single') {
       const code = document.getElementById('code-input').value.trim();
-      if(!code){alert('Paste some legacy code first.');btn.disabled=false;return;}
+      if(!code){ alert('Paste some legacy code first.'); btn.disabled=false; return; }
       const result = await processOne(code, srcLabel, tgt, tgtLabel, null);
       showStatus(result.complexity.manual_required ? 'Done — manual review required (see warnings above).' : 'Done.', false);
       switchTab('docs');
     } else {
-      if(!queue.length){alert('No files in queue.');btn.disabled=false;return;}
+      if(!queue.length){ alert('No files in queue.'); btn.disabled=false; return; }
       const delay = parseInt(document.getElementById('batch-delay').value);
       for(let i=0;i<queue.length;i++){
         const f=queue[i];
         queue[i].status='running'; renderQueue();
-        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name}`, true);
+        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name [f.name]}`, true);
         ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
         document.getElementById('complexity-wrap').style.display='none';
         document.getElementById('warn-banner').className='warn-banner';
@@ -966,10 +1156,10 @@ async function runAll() {
           const base=f.name.replace(/\.[^.]+$/,'');
           const result=await processOne(f.content,srcLabel,tgt,tgtLabel,base);
           queue[i].status=result.complexity.level==='high'?'warn':'done';
-          batchResults.push({name:f.name,...result});
+          batchResults.push({name:f.name [f.name],...result});
         } catch(e) {
           queue[i].status='error';
-          batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});
+          batchResults.push({name:f.name [f.name],complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});
         }
         renderQueue();
         if(delay && i < queue.length-1) await new Promise(r=>setTimeout(r,delay));
@@ -1004,7 +1194,7 @@ function renderSummary(results) {
     const pillClass={low:'risk-clean',medium:'risk-partial',high:'risk-manual'}[c.level]||'risk-manual';
     const pillText={low:'Clean',medium:'Partial',high:'Manual'}[c.level]||'Error';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px;">${r.name}</code></td>`+
+    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px;">${r.name [r.name]}</code></td>`+
       `<td><span class="risk-pill ${pillClass}">${pillText}</span><div class="note-cell" style="margin-top:3px;">${c.score||0}/100</div></td>`+
       `<td>${c.manual_required?'Partial + TODOs':'Automated'}</td>`+
       `<td class="note-cell">${(c.issues&&c.issues.length)?c.issues.join('; '):'—'}</td>`;
@@ -1016,7 +1206,7 @@ function exportSummaryCSV() {
   const rows=[['File','Level','Score','Conversion','Issues']];
   batchResults.forEach(r=>{
     const c=r.complexity||{};
-    rows.push([r.name, c.level||'', c.score||0, c.manual_required?'Partial+TODOs':'Automated', (c.issues||[]).join(' | ')]);
+    rows.push([r.name [r.name], c.level||'', c.score||0, c.manual_required?'Partial+TODOs':'Automated', (c.issues||[]).join(' | ')]);
   });
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   downloadText(csv,'rosetta_summary.csv');
