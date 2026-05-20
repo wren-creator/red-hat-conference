@@ -172,7 +172,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* Tabs */
-  .tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-top: 1.5rem; }
+  .tabs { display: flex; align-items: center; border-bottom: 0.5px solid var(--border); margin-top: 1.5rem; }
   .tab { font-size: 13px; padding: 9px 14px; cursor: pointer; color: var(--text2); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--sans); white-space: nowrap; transition: color 0.12s; }
   .tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
   .tab:hover:not(.active) { color: var(--text); }
@@ -388,7 +388,7 @@
         <button class="btn" style="flex:1;" onclick="document.getElementById('fp').click()">&#128196; Pick files&#8230;</button>
       </div>
       <input type="file" id="fp" multiple
-        accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh"
+        accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh,.rexx,.rex,.exec"
         style="display:none;" onchange="handleFilePicker(this)">
 
       <div class="drop-zone" id="drop-zone"
@@ -435,11 +435,12 @@
     <div class="status-row" id="status-row"></div>
   </div>
 
-  <!-- Output tabs -->
+  <!-- Output tabs — CHANGED: added align-items:center and Clear button pushed to right -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('docs')" id="tab-docs">&#128196; Documentation<span id="ind-docs"></span></button>
     <button class="tab" onclick="switchTab('tests')" id="tab-tests">&#9878; Test script<span id="ind-tests"></span></button>
     <button class="tab" onclick="switchTab('converted')" id="tab-converted">&#60;/&#62; Converted code<span id="ind-converted"></span></button>
+    <button class="btn btn-sm" onclick="clearOutputs()" style="margin-left:auto;margin-bottom:4px;color:var(--text3);border-color:var(--border);" title="Clear all output panels">&#10005; Clear</button>
   </div>
 
   <div id="panel-docs">
@@ -490,8 +491,6 @@ let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='anthropic';
 
 // ─── Init ─────────────────────────────────────────────────────────
-// API key is NEVER persisted — in-memory only, cleared on close.
-// Non-sensitive preferences (provider, model names, Ollama URL) are saved.
 window.addEventListener('DOMContentLoaded', () => {
   const savedProv = localStorage.getItem('rs_provider') || 'anthropic';
   setProvider(savedProv);
@@ -666,6 +665,8 @@ function showStatus(msg, spinning) {
   const r = document.getElementById('status-row');
   r.innerHTML = msg ? (spinning ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`) : '';
 }
+
+// ─── CHANGED: setOutput now auto-scrolls to bottom on each chunk ──
 function setOutput(tab, text, prose) {
   const el = document.getElementById('out-'+tab);
   el.className = 'out-box' + (prose ? ' prose' : '');
@@ -682,7 +683,19 @@ function setOutput(tab, text, prose) {
     acts.appendChild(dl);
   }
   el.style.position='relative'; el.insertBefore(acts, el.firstChild);
+  // Auto-scroll to bottom as content streams in
+  el.scrollTop = el.scrollHeight;
 }
+
+// ─── ADDED: Clear all output panels, dots, complexity, warning ────
+function clearOutputs() {
+  ['docs','tests','converted'].forEach(t => { setOutput(t,'',false); setDot(t,''); });
+  document.getElementById('complexity-wrap').style.display = 'none';
+  document.getElementById('warn-banner').className = 'warn-banner';
+  document.getElementById('status-row').innerHTML = '';
+  document.getElementById('summary-panel').classList.remove('show');
+}
+
 function downloadText(text, filename) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
@@ -800,8 +813,9 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName) {
   switchTab('tests'); setDot('tests','dot-run');
   showStatus('Generating test script…', true);
   const testLang = ['python3','go'].includes(tgt)?tgt:'bash';
+  const ansibleLintRequirement = tgt==='ansible' ? `\n\nREQUIRED: The test script MUST include an ansible-lint section that:\n1. Checks that ansible-lint is installed (skip with a warning if not found, do not fail)\n2. Runs: ansible-lint <playbook_file> and captures the exit code\n3. Reports PASS if exit code is 0, WARN (not FAIL) if ansible-lint is not installed, FAIL if lint errors are found\n4. This ansible-lint block must always be the last test section, labelled clearly as "ANSIBLE-LINT VALIDATION"` : '';
   const tests = await callAI(SYS,
-    `Write a ${testLang==='python3'?'pytest':testLang==='go'?'Go test':'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw code. Include tests for each behavior, edge cases, and clear test names.\n\nOriginal:\n${code}`,
+    `Write a bash test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw bash code. Include tests for each behavior, edge cases, and clear test names.${ansibleLintRequirement}\n\nOriginal:\n${code}`,
     t=>setOutput('tests',t,false));
   setDot('tests','dot-done');
   if(baseName) await saveFile(baseName,'_test.'+testExt,tests);
@@ -818,7 +832,103 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName) {
   setDot('converted', complexity.manual_required?'dot-warn':'dot-done');
   if(baseName) await saveFile(baseName,'.'+ext,converted);
 
+  // ── Wiki Markdown (assembled locally, no extra API call) ─────────
+  if(baseName) {
+    showStatus('Writing wiki Markdown…', true);
+    const wikiMd = buildWikiMd({baseName, srcLabel, tgtLabel, ext, complexity, docs, converted, tgt});
+    await saveFile(baseName,'_wiki.md', wikiMd);
+  }
+
   return {docs, tests, converted, complexity};
+}
+
+// ─── Build wiki Markdown from already-generated content ────────────────────
+function buildWikiMd({ baseName, srcLabel, tgtLabel, ext, complexity, docs, converted, tgt }) {
+  const now = new Date().toISOString().slice(0,10);
+  const complexityBadge = {low:'\u2705 Clean', medium:'\u26a0\ufe0f Partial', high:'\ud83d\udd34 Manual required'}[complexity.level] || '\u2753 Unknown';
+
+  // Parse the plain-text docs into labelled sections
+  const sections = {};
+  let currentKey = null;
+  const sectionHeaders = ['PURPOSE','INPUTS','OUTPUTS','LOGIC WALKTHROUGH','KNOWN RISKS','MIGRATION NOTES'];
+  for(const line of docs.split('\n')) {
+    const header = sectionHeaders.find(h => line.trim().toUpperCase().startsWith(h));
+    if(header) { currentKey = header; sections[header] = ''; }
+    else if(currentKey) { sections[currentKey] += line + '\n'; }
+  }
+  const sec = (h) => (sections[h]||'').trim() || '_Not documented._';
+
+  const issuesList = complexity.issues && complexity.issues.length
+    ? complexity.issues.map(i => `- ${i}`).join('\n')
+    : '- None identified';
+
+  const ansibleLintSection = tgt === 'ansible' ? `
+## Ansible-Lint Validation
+
+> Run the generated test script to execute \`ansible-lint\` against the playbook.
+> The test script will report **PASS**, **WARN** (not installed), or **FAIL** (lint errors).
+
+\`\`\`bash
+bash ${baseName}_test.sh
+\`\`\`
+` : '';
+
+  const codeLang = {ansible:'yaml', python3:'python', terraform:'hcl', go:'go', powershell:'powershell'}[tgt] || tgt;
+
+  return `# ${baseName}
+
+> **Migration:** ${srcLabel} \u2192 ${tgtLabel}
+> **Date:** ${now}
+> **Complexity:** ${complexityBadge} (${complexity.score}/100)
+> **Output file:** \`${baseName}.${ext}\`
+
+---
+
+## Purpose
+
+${sec('PURPOSE')}
+
+## Inputs
+
+${sec('INPUTS')}
+
+## Outputs
+
+${sec('OUTPUTS')}
+
+## Logic Walkthrough
+
+${sec('LOGIC WALKTHROUGH')}
+
+## Known Risks
+
+${sec('KNOWN RISKS')}
+
+## Migration Notes
+
+${sec('MIGRATION NOTES')}
+
+## Conversion Complexity
+
+| Field | Value |
+|---|---|
+| Score | ${complexity.score} / 100 |
+| Level | ${complexity.label} |
+| Manual review required | ${complexity.manual_required ? 'Yes' : 'No'} |
+
+### Blockers identified
+
+${issuesList}
+${ansibleLintSection}
+## Converted Code
+
+\`\`\`${codeLang}
+${converted.trim()}
+\`\`\`
+
+---
+_Generated by Rosetta Stone Legacy Code Modernizer_
+`;
 }
 
 // ─── Run ──────────────────────────────────────────────────────────
