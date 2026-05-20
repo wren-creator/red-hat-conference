@@ -230,7 +230,7 @@
           <span class="provider-badge badge-ollama">🖥️ Ollama</span>
           <div class="field">
             <label>Ollama base URL</label>
-            <input type="text" id="ollama-url" value="http://localhost:11434 [localhost]" placeholder="http://localhost:11434 [localhost]">
+            <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
           </div>
           <div class="field">
             <label>Model name</label>
@@ -490,7 +490,7 @@
 // ─── Samples ──────────────────────────────────────────────────────
 const SAMPLES = {
   bash:`#!/bin/bash\n# backup.sh — backs up /var/data to /mnt/backup with timestamp\nset -euo pipefail\nSRC="/var/data"\nDEST="/mnt/backup/$(date +%Y%m%d_%H%M%S)"\nmkdir -p "$DEST"\ncp -r "$SRC/"* "$DEST/"\nfind "$DEST" -name "*.log" -mtime +30 -delete\necho "Backup complete: $DEST"`,
-  perl:`#!/usr/bin/perl\n# parse_logs.pl [parse_logs.pl] — counts 5xx errors per IP in Apache log\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
+  perl:`#!/usr/bin/perl\n# parse_logs.pl — counts 5xx errors per IP in Apache log\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
   cobol:`       IDENTIFICATION DIVISION.\n       PROGRAM-ID. CALC-TAX.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-INCOME PIC 9(7)V99.\n       01 WS-TAX    PIC 9(7)V99.\n       PROCEDURE DIVISION.\n           MOVE 55000.00 TO WS-INCOME\n           COMPUTE WS-TAX = WS-INCOME * 0.22\n           DISPLAY "Tax: " WS-TAX\n           STOP RUN.`,
   rexx:`/* REXX */\n/* sysinfo.rex — display basic system info via z/VM CP commands */\nARG username\nIF username = '' THEN username = 'OPERATOR'\nSAY 'Hello,' username'!'\nADDRESS COMMAND 'CP QUERY TIME'\nADDRESS COMMAND 'CP QUERY STORAGE'\nPULL response\nSAY 'Response:' response\nEXIT 0`,
   awk:`#!/usr/bin/awk -f\n# sum_col.awk — sums column 3 grouped by column 1\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
@@ -623,7 +623,7 @@ async function callAnthropic(system, user, onChunk) {
   const model = document.getElementById('anthropic-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const resp = await fetch('https://api.anthropic.com/v1/messages [api.anthropic.com]',{
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body:JSON.stringify({model,max_tokens:maxTok,stream:true,temperature:temp,system,messages:[{role:'user',content:user}]})
@@ -643,7 +643,7 @@ async function callOpenAI(system, user, onChunk) {
   const model = document.getElementById('openai-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const resp = await fetch('https://api.openai.com/v1/chat/completions [api.openai.com]',{
+  const resp = await fetch('https://api.openai.com/v1/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
     body:JSON.stringify({model,max_tokens:maxTok,stream:true,temperature:temp,messages:[{role:'system',content:system},{role:'user',content:user}]})
@@ -663,7 +663,8 @@ async function callGemini(system, user, onChunk) {
   const model = document.getElementById('gemini-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const url = 'https://genrativelanguage.googleapis.com/v1beta.models/' + model + ':streamGenerateContent?alt=sse&key=' + key;
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':streamGenerateContent?alt=sse&key=' + key;
+  const resp = await fetch(url, {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
@@ -775,7 +776,7 @@ function showWarning(level,issues){
 }
 
 // ─── Queue / File I/O ─────────────────────────────────────────────
-function addToQueue(name,content){ if(queue.find(f=>f.name [f.name]===name))return; queue.push({name,content,status:'pending'}); renderQueue(); }
+function addToQueue(name,content){ if(queue.find(f=>f.name===name))return; queue.push({name,content,status:'pending'}); renderQueue(); }
 function removeFromQueue(i){ queue.splice(i,1); renderQueue(); }
 function clearQueue(){ queue=[]; renderQueue(); }
 function renderQueue(){
@@ -787,7 +788,7 @@ function renderQueue(){
   const stTxt={pending:'queued',running:'processing…',done:'done',warn:'needs review',error:'error'};
   queue.forEach((f,i)=>{
     const row=document.createElement('div'); row.className='queue-item';
-    row.innerHTML=`<span class="fname" title="${f.name [f.name]}">${f.name [f.name]}</span>`+
+    row.innerHTML=`<span class="fname" title="${f.name}">${f.name}</span>`+
       `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>`+
       (f.status==='pending'?`<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>`:'');
     list.appendChild(row);
@@ -796,25 +797,25 @@ function renderQueue(){
 async function pickDirectory(){
   try{
     const dh=await window.showDirectoryPicker({mode:'read'}); let c=0;
-    for await(const e of dh.values()) if(e.kind==='file'&&isLegacy(e.name [e.name])){const f=await e.getFile();addToQueue(f.name [f.name],await f.text());c++;}
+    for await(const e of dh.values()) if(e.kind==='file'&&isLegacy(e.name)){const f=await e.getFile();addToQueue(f.name,await f.text());c++;}
     if(!c) showStatus('No recognized legacy files found in that directory.',false);
-  }catch(e){if(e.name [e.name]!=='AbortError')showStatus('Directory access failed: '+e.message,false);}
+  }catch(e){if(e.name!=='AbortError')showStatus('Directory access failed: '+e.message,false);}
 }
-async function handleFilePicker(input){ for(const f of input.files)if(isLegacy(f.name [f.name]))addToQueue(f.name [f.name],await f.text()); input.value=''; }
+async function handleFilePicker(input){ for(const f of input.files)if(isLegacy(f.name))addToQueue(f.name,await f.text()); input.value=''; }
 async function handleDrop(e){
   e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over');
   for(const item of [...e.dataTransfer.items]){
     if(item.kind!=='file')continue;
     if(item.getAsFileSystemHandle){
       const h=await item.getAsFileSystemHandle();
-      if(h.kind==='directory'){for await(const en of h.values())if(en.kind==='file'&&isLegacy(en.name [en.name])){const f=await en.getFile();addToQueue(f.name [f.name],await f.text());}}
-      else{const f=await h.getFile();if(isLegacy(f.name [f.name]))addToQueue(f.name [f.name],await f.text());}
-    }else{const f=item.getAsFile();if(f&&isLegacy(f.name [f.name]))addToQueue(f.name [f.name],await f.text());}
+      if(h.kind==='directory'){for await(const en of h.values())if(en.kind==='file'&&isLegacy(en.name)){const f=await en.getFile();addToQueue(f.name,await f.text());}}
+      else{const f=await h.getFile();if(isLegacy(f.name))addToQueue(f.name,await f.text());}
+    }else{const f=item.getAsFile();if(f&&isLegacy(f.name))addToQueue(f.name,await f.text());}
   }
 }
 async function pickOutputDir(){
   try{outputDirHandle=await window.showDirectoryPicker({mode:'readwrite'});document.getElementById('out-dir-name').textContent=outputDirHandle.name+'/';}
-  catch(e){if(e.name [e.name]!=='AbortError')showStatus('Could not access output directory.',false);}
+  catch(e){if(e.name!=='AbortError')showStatus('Could not access output directory.',false);}
 }
 async function saveFile(base,suffix,content){
   if(!outputDirHandle)return;
@@ -917,18 +918,18 @@ async function runAll(){
       for(let i=0;i<queue.length;i++){
         const f=queue[i];
         queue[i].status='running'; renderQueue();
-        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name [f.name]}`,true);
+        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name}`,true);
         ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
         document.getElementById('complexity-wrap').style.display='none';
         document.getElementById('warn-banner').className='warn-banner';
         const ctxCheck=await checkOllamaContext(f.content);
-        if(!ctxCheck.ok){queue[i].status='error';batchResults.push({name:f.name [f.name],complexity:{score:0,level:'high',label:'Too large',issues:['Script too large for Ollama — switch to a cloud provider'],manual_required:true}});renderQueue();continue;}
+        if(!ctxCheck.ok){queue[i].status='error';batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Too large',issues:['Script too large for Ollama — switch to a cloud provider'],manual_required:true}});renderQueue();continue;}
         try{
           const base=f.name.replace(/\.[^.]+$/,'');
           const result=await processOne(f.content,srcLabel,tgt,tgtLabel,base,ctxCheck.numCtx);
           queue[i].status=result.complexity.level==='high'?'warn':'done';
-          batchResults.push({name:f.name [f.name],...result});
-        }catch(e){queue[i].status='error';batchResults.push({name:f.name [f.name],complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});}
+          batchResults.push({name:f.name,...result});
+        }catch(e){queue[i].status='error';batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});}
         renderQueue();
         if(delay&&i<queue.length-1) await new Promise(r=>setTimeout(r,delay));
       }
@@ -961,7 +962,7 @@ function renderSummary(results){
     const pillClass={low:'risk-clean',medium:'risk-partial',high:'risk-manual'}[c.level]||'risk-manual';
     const pillText={low:'Clean',medium:'Partial',high:'Manual'}[c.level]||'Error';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px;">${r.name [r.name]}</code></td>`+
+    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px;">${r.name}</code></td>`+
       `<td><span class="risk-pill ${pillClass}">${pillText}</span><div class="note-cell" style="margin-top:3px;">${c.score||0}/100</div></td>`+
       `<td>${c.manual_required?'Partial + TODOs':'Automated'}</td>`+
       `<td class="note-cell">${(c.issues?.length)?c.issues.join('; '):'—'}</td>`;
@@ -971,7 +972,7 @@ function renderSummary(results){
 
 function exportSummaryCSV(){
   const rows=[['File','Level','Score','Conversion','Issues']];
-  batchResults.forEach(r=>{const c=r.complexity||{};rows.push([r.name [r.name],c.level||'',c.score||0,c.manual_required?'Partial+TODOs':'Automated',(c.issues||[]).join(' | ')]);});
+  batchResults.forEach(r=>{const c=r.complexity||{};rows.push([r.name,c.level||'',c.score||0,c.manual_required?'Partial+TODOs':'Automated',(c.issues||[]).join(' | ')]);});
   downloadText(rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),'rosetta_summary.csv');
 }
 </script>
