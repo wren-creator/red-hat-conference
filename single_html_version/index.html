@@ -663,7 +663,7 @@ async function callGemini(system, user, onChunk) {
   const model = document.getElementById('gemini-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}`,{ [generativelanguage.googleapis.com]
+  const url = 'https://genrativelanguage.googleapis.com/v1beta.models/' + model + ':streamGenerateContent?alt=sse&key=' + key;
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
