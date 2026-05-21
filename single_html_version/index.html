@@ -186,6 +186,77 @@
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
   .hidden { display: none !important; }
   .mt8 { margin-top: 8px; } .gap8 { display: flex; gap: 8px; }
+
+  /* ── Diagnostics panel ── */
+  .diag-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+  .diag-panel.open { display: block; }
+  .diag-title { font-size: 13px; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .diag-tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; }
+  .dtab { font-size: 12px; padding: 7px 12px; cursor: pointer; color: var(--text2); background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: var(--sans); }
+  .dtab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  .dtab:hover:not(.active) { color: var(--text); }
+  .dpanel { display: none; } .dpanel.active { display: block; }
+
+  /* Signal board */
+  .diag-placeholder { text-align: center; padding: 2rem 1rem; color: var(--text3); font-size: 13px; }
+  .diag-placeholder .dph-icon { font-size: 28px; margin-bottom: 8px; }
+  .signal-board { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  @media(max-width:500px){ .signal-board { grid-template-columns: 1fr; } }
+  .sig-row { display: flex; align-items: center; gap: 9px; padding: 7px 10px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); font-size: 12px; }
+  .sig-row.state-green { border-left: 2px solid #1D9E75; }
+  .sig-row.state-amber { border-left: 2px solid #BA7517; }
+  .sig-row.state-red   { border-left: 2px solid #E24B4A; }
+  .sig-row.state-grey  { border-left: 2px solid var(--border2); }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s, box-shadow 0.3s; }
+  .sdot.green { background: #1D9E75; box-shadow: 0 0 5px #1D9E75; }
+  .sdot.amber { background: #BA7517; box-shadow: 0 0 5px #BA7517; animation: pulse-a 2s ease-in-out infinite; }
+  .sdot.red   { background: #E24B4A; box-shadow: 0 0 5px #E24B4A; animation: pulse-r 1.2s ease-in-out infinite; }
+  .sdot.grey  { background: var(--text3); box-shadow: none; }
+  .sdot.checking { background: var(--text3); box-shadow: none; animation: pulse-c 0.8s ease-in-out infinite; }
+  @keyframes pulse-a { 0%,100%{box-shadow:0 0 4px #BA7517;} 50%{box-shadow:0 0 10px #BA7517;} }
+  @keyframes pulse-r { 0%,100%{box-shadow:0 0 4px #E24B4A;} 50%{box-shadow:0 0 12px #E24B4A;} }
+  @keyframes pulse-c { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
+  .sig-name { color: var(--text2); flex: 1; }
+  .sig-val  { color: var(--text); font-size: 11px; text-align: right; max-width: 160px; }
+  .sig-val.amber { color: var(--text-warn); }
+  .sig-val.red   { color: var(--text-danger); }
+
+  /* Health banner */
+  .health-banner { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: var(--radius); margin-bottom: 1rem; font-size: 12px; border: 0.5px solid; }
+  .hb-ok    { background: var(--bg-success); border-color: #1D9E75; color: var(--text-success); }
+  .hb-warn  { background: var(--bg-warn);    border-color: #EF9F27; color: var(--text-warn); }
+  .hb-error { background: var(--bg-danger);  border-color: #F09595; color: var(--text-danger); }
+  .hb-msg   { flex: 1; font-weight: 600; }
+  .hb-detail{ font-size: 11px; opacity: 0.8; margin-top: 2px; }
+
+  /* Log */
+  .diag-log { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); max-height: 240px; overflow-y: auto; font-family: var(--mono); font-size: 11px; }
+  .dlog-row { display: flex; border-bottom: 0.5px solid var(--border); }
+  .dlog-row:last-child { border-bottom: none; }
+  .dlog-ts  { padding: 6px 8px; color: var(--text3); white-space: nowrap; border-right: 0.5px solid var(--border); min-width: 68px; font-size: 10px; display: flex; align-items: center; }
+  .dlog-lv  { padding: 6px 6px; min-width: 44px; text-align: center; border-right: 0.5px solid var(--border); font-size: 10px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
+  .ll-ok   { color: var(--text-success); } .ll-info { color: var(--text-info); }
+  .ll-warn { color: var(--text-warn); }   .ll-err  { color: var(--text-danger); }
+  .dlog-msg { padding: 6px 10px; color: var(--text2); flex: 1; display: flex; align-items: center; line-height: 1.4; }
+  .dlog-dur { padding: 6px 8px; color: var(--text3); font-size: 10px; border-left: 0.5px solid var(--border); white-space: nowrap; display: flex; align-items: center; }
+
+  /* Detect cards */
+  .detect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media(max-width:500px){ .detect-grid { grid-template-columns: 1fr; } }
+  .detect-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .detect-card.dc-active { border-color: #1D9E75; }
+  .dc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 12px; font-weight: 600; }
+  .dc-rows { display: flex; flex-direction: column; gap: 5px; }
+  .dc-row  { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); }
+  .dc-val  { margin-left: auto; color: var(--text); font-family: var(--mono); font-size: 10.5px; }
+  .dc-val.ok  { color: var(--text-success); }
+  .dc-val.bad { color: var(--text-danger); }
+  .dc-val.warn{ color: var(--text-warn); }
+  .diag-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin: 1rem 0 8px; }
+  .diag-recheck { font-size: 11px; color: var(--text-info); background: none; border: none; cursor: pointer; font-family: var(--sans); padding: 0; margin-left: auto; }
+  .diag-recheck:hover { text-decoration: underline; }
+  .diag-export { font-size: 11px; color: var(--text3); background: none; border: none; cursor: pointer; font-family: var(--sans); padding: 0; }
+  .diag-export:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -202,6 +273,10 @@
       <button class="btn btn-sm" onclick="toggleSettings()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         Settings
+      </button>
+      <button class="btn btn-sm" onclick="toggleDiag()" id="diag-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h3m12 0h3M12 3v3m0 12v3m-6.36-13.95 2.12 2.12m8.49 8.49 2.12 2.12M5.64 18.36l2.12-2.12m8.49-8.49 2.12-2.12"/></svg>
+        <span id="diag-btn-label">Diagnostics</span>
       </button>
     </div>
   </div>
@@ -345,6 +420,88 @@
           </select>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Diagnostics Panel -->
+  <div class="diag-panel" id="diag-panel">
+    <div class="diag-title">
+      🔬 Diagnostics &amp; Troubleshooting
+      <button class="diag-recheck" onclick="diagRecheck()">↺ Re-check now</button>
+    </div>
+
+    <div class="diag-tabs">
+      <button class="dtab active" onclick="switchDTab('health')" id="dtab-health">Signal Board</button>
+      <button class="dtab" onclick="switchDTab('detect')" id="dtab-detect">Auto-Detect</button>
+      <button class="dtab" onclick="switchDTab('log')" id="dtab-log">Activity Log <span id="diag-log-count" style="font-size:10px;padding:1px 5px;background:var(--bg2);border-radius:100px;margin-left:3px;">0</span></button>
+    </div>
+
+    <!-- Signal Board tab -->
+    <div class="dpanel active" id="dpanel-health">
+      <div id="diag-placeholder" class="diag-placeholder">
+        <div class="dph-icon">🟢🟡🔴</div>
+        <div>Run a conversion to populate the signal board.</div>
+        <div style="font-size:11px;margin-top:4px;color:var(--text3)">Signals update live after each generation step.</div>
+      </div>
+      <div id="diag-board" class="hidden">
+        <div class="health-banner hb-ok" id="hb-banner">
+          <div>
+            <div class="hb-msg" id="hb-msg">All signals green</div>
+            <div class="hb-detail" id="hb-detail"></div>
+          </div>
+        </div>
+        <div class="signal-board" id="signal-board"></div>
+      </div>
+    </div>
+
+    <!-- Auto-Detect tab -->
+    <div class="dpanel" id="dpanel-detect">
+      <div class="detect-grid" id="detect-grid">
+        <div class="detect-card" id="dc-anthropic">
+          <div class="dc-head"><span>🟠 Anthropic</span><span class="pill" id="dc-pill-anthropic" style="font-size:10px;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--text3);">not active</span></div>
+          <div class="dc-rows" id="dc-rows-anthropic">
+            <div class="dc-row"><div class="sdot grey"></div><span>Key in memory</span><span class="dc-val" id="dcv-ant-key">—</span></div>
+            <div class="dc-row"><div class="sdot grey"></div><span>Format valid</span><span class="dc-val" id="dcv-ant-fmt">—</span></div>
+            <div class="dc-row"><div class="sdot grey" id="dcd-ant-conn"></div><span>API reachable</span><span class="dc-val" id="dcv-ant-conn">not checked</span></div>
+            <div class="dc-row"><div class="sdot grey"></div><span>Model</span><span class="dc-val" id="dcv-ant-model">—</span></div>
+          </div>
+        </div>
+        <div class="detect-card" id="dc-ollama">
+          <div class="dc-head"><span>🖥️ Ollama</span><span class="pill" id="dc-pill-ollama" style="font-size:10px;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--text3);">not active</span></div>
+          <div class="dc-rows">
+            <div class="dc-row"><div class="sdot grey" id="dcd-ol-srv"></div><span>Server running</span><span class="dc-val" id="dcv-ol-srv">not checked</span></div>
+            <div class="dc-row"><div class="sdot grey" id="dcd-ol-model"></div><span>Model found</span><span class="dc-val" id="dcv-ol-model">—</span></div>
+            <div class="dc-row"><div class="sdot grey"></div><span>Available models</span><span class="dc-val" id="dcv-ol-list">—</span></div>
+            <div class="dc-row"><div class="sdot grey"></div><span>URL</span><span class="dc-val" id="dcv-ol-url">—</span></div>
+          </div>
+        </div>
+        <div class="detect-card" id="dc-openai">
+          <div class="dc-head"><span>🟢 OpenAI</span><span class="pill" id="dc-pill-openai" style="font-size:10px;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--text3);">not active</span></div>
+          <div class="dc-rows">
+            <div class="dc-row"><div class="sdot grey"></div><span>Key in memory</span><span class="dc-val" id="dcv-oai-key">—</span></div>
+            <div class="dc-row"><div class="sdot grey" id="dcd-oai-conn"></div><span>API reachable</span><span class="dc-val" id="dcv-oai-conn">not checked</span></div>
+            <div class="dc-row"><div class="sdot grey"></div><span>Model</span><span class="dc-val" id="dcv-oai-model">—</span></div>
+          </div>
+        </div>
+        <div class="detect-card" id="dc-gemini">
+          <div class="dc-head"><span>🔵 Gemini</span><span class="pill" id="dc-pill-gemini" style="font-size:10px;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--text3);">not active</span></div>
+          <div class="dc-rows">
+            <div class="dc-row"><div class="sdot grey"></div><span>Key in memory</span><span class="dc-val" id="dcv-gem-key">—</span></div>
+            <div class="dc-row"><div class="sdot grey" id="dcd-gem-conn"></div><span>API reachable</span><span class="dc-val" id="dcv-gem-conn">not checked</span></div>
+            <div class="dc-row"><div class="sdot grey"></div><span>Model</span><span class="dc-val" id="dcv-gem-model">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="diag-section-label" style="margin-top:1rem;">Detection runs on panel open, provider switch &amp; after each run</div>
+    </div>
+
+    <!-- Activity Log tab -->
+    <div class="dpanel" id="dpanel-log">
+      <div style="display:flex;align-items:center;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--text3);">Logs accumulate from page load regardless of panel state.</span>
+        <button class="diag-export" onclick="diagExportLog()" style="margin-left:auto;">Export log</button>
+      </div>
+      <div class="diag-log" id="diag-log-wrap"></div>
     </div>
   </div>
 
@@ -537,6 +694,9 @@ function setProvider(p) {
   else if(p==='openai'){ dot.classList.add('c-green'); label.textContent='OpenAI GPT'; ctx.textContent='128K ctx'; }
   else if(p==='gemini'){ dot.classList.add('c-blue'); label.textContent='Google Gemini'; ctx.textContent='1M ctx'; }
   else { dot.classList.add('c-grey'); label.textContent='Ollama (local)'; ctx.textContent='auto ctx'; }
+
+  diagAddLog('INFO', 'Provider switched to: '+p);
+  if(document.getElementById('diag-panel').classList.contains('open')) diagRunAutoDetect();
 }
 
 function savePrefs() {
@@ -847,12 +1007,23 @@ async function processOne(code,srcLabel,tgt,tgtLabel,baseName,numCtx){
   const testExt={python3:'py',go:'_test.go'}[tgt]||'sh';
   let complexity={score:0,level:'low',label:'Clean',issues:[],manual_required:false};
 
+  // Update token headroom signal
+  const estTokens = Math.ceil(code.length/4);
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const headroom = maxTok - estTokens;
+  diagSet('tokens', headroom < 200 ? 'red' : headroom < 800 ? 'amber' : 'green',
+    headroom < 0 ? 'exceeds limit' : headroom < 800 ? `~${headroom} tok left` : `~${estTokens} tok input`);
+  diagSet('model', 'green', provider==='ollama' ? document.getElementById('ollama-model').value : document.getElementById(provider+'-model')?.value||provider);
+  diagAddLog('INFO', `Run started · ${srcLabel} → ${tgtLabel} · ~${estTokens} est. tokens`);
+
   const skipAssess=document.getElementById('skip-complexity').value==='true';
   if(!skipAssess){
     showStatus('Analyzing complexity…',true);
+    diagAddLog('INFO','Complexity assessment started');
     complexity=await assessComplexity(code,srcLabel,tgtLabel);
     showComplexity(complexity.score,`${complexity.label} (${complexity.score}/100)`,complexity.level);
     showWarning(complexity.level,complexity.issues);
+    diagAddLog('OK',`Complexity: score=${complexity.score} level=${complexity.level} · ${complexity.issues.length} blocker(s)`);
   }else{
     document.getElementById('complexity-wrap').style.display='none';
     document.getElementById('warn-banner').className='warn-banner';
@@ -982,6 +1153,256 @@ function exportSummaryCSV(){
   batchResults.forEach(r=>{const c=r.complexity||{};rows.push([r.name,c.level||'',c.score||0,c.manual_required?'Partial+TODOs':'Automated',(c.issues||[]).join(' | ')]);});
   downloadText(rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),'rosetta_summary.csv');
 }
+
+// ─── Diagnostics ──────────────────────────────────────────────────
+const DIAG_SIGNALS = [
+  { id:'api',      name:'API / server reachable',   ok:'Responding',              warn:'Slow (>8s)',                  err:'Unreachable' },
+  { id:'auth',     name:'Auth / key accepted',       ok:'No 401 errors',           warn:'Not yet tested',              err:'401 Unauthorized' },
+  { id:'model',    name:'Model available',           ok:'Confirmed this session',  warn:'Not verified',                err:'Not found / not pulled' },
+  { id:'speed',    name:'Response time',             ok:'Fast (<6s avg)',           warn:'Slow (6–15s)',                err:'Timeout / no response' },
+  { id:'stream',   name:'Stream health',             ok:'Completing cleanly',      warn:'Stalled mid-stream',          err:'Stream cut off' },
+  { id:'tokens',   name:'Token headroom',            ok:'Input within budget',     warn:'Near max_tokens limit',       err:'Exceeds limit — may truncate' },
+  { id:'complete', name:'Last response complete',    ok:'Ended normally',          warn:'Hit max_tokens cutoff',       err:'No completion received' },
+  { id:'output',   name:'Output validity',           ok:'Valid output received',   warn:'JSON parse needed fallback',  err:'Empty or malformed' },
+  { id:'errors',   name:'Error count',               ok:'0 errors this session',   warn:'1–2 errors (recovered)',      err:'3+ errors — check log' },
+  { id:'rate',     name:'Rate limit',                ok:'No 429s this session',    warn:'1 rate-limit hit',            err:'Rate limited' },
+];
+
+let diagState = {};
+let diagLog = [];
+let diagSessionStats = { requests:0, errors:0, totalMs:0, lastMs:0 };
+let diagFirstRun = false;
+
+// Reset all dots to grey
+function diagReset() {
+  DIAG_SIGNALS.forEach(s => { diagState[s.id] = { color:'grey', val:'not checked' }; });
+}
+diagReset();
+
+function toggleDiag() {
+  const panel = document.getElementById('diag-panel');
+  const isOpen = panel.classList.toggle('open');
+  if(isOpen) {
+    diagRunAutoDetect();
+    diagRefreshBoard();
+  }
+}
+
+function switchDTab(id) {
+  ['health','detect','log'].forEach(t => {
+    document.getElementById('dtab-'+t).classList.toggle('active', t===id);
+    document.getElementById('dpanel-'+t).classList.toggle('active', t===id);
+  });
+}
+
+// ── Signal board rendering ──
+function diagRefreshBoard() {
+  if(!diagFirstRun) return; // keep placeholder until first real run
+  document.getElementById('diag-placeholder').classList.add('hidden');
+  document.getElementById('diag-board').classList.remove('hidden');
+
+  // Overall health
+  const colors = Object.values(diagState).map(s=>s.color);
+  const hasRed = colors.includes('red');
+  const hasAmber = colors.includes('amber');
+  const banner = document.getElementById('hb-banner');
+  const msg = document.getElementById('hb-msg');
+  const detail = document.getElementById('hb-detail');
+  banner.className = 'health-banner ' + (hasRed ? 'hb-error' : hasAmber ? 'hb-warn' : 'hb-ok');
+  msg.textContent = hasRed ? 'Issue detected — check red signals below' : hasAmber ? 'Warning — review amber signals below' : 'All signals green';
+  const avg = diagSessionStats.requests > 0 ? Math.round(diagSessionStats.totalMs/diagSessionStats.requests/100)/10 : 0;
+  detail.textContent = `${diagSessionStats.requests} request${diagSessionStats.requests!==1?'s':''} this session · ${diagSessionStats.errors} error${diagSessionStats.errors!==1?'s':''} · avg ${avg}s`;
+
+  // Render dots
+  const board = document.getElementById('signal-board');
+  board.innerHTML = '';
+  DIAG_SIGNALS.forEach(sig => {
+    const s = diagState[sig.id] || { color:'grey', val:'—' };
+    const row = document.createElement('div');
+    row.className = `sig-row state-${s.color}`;
+    row.innerHTML = `<div class="sdot ${s.color}"></div><span class="sig-name">${sig.name}</span><span class="sig-val ${s.color==='green'?'':s.color}">${s.val}</span>`;
+    board.appendChild(row);
+  });
+}
+
+// ── Dot setters called during processing ──
+function diagSet(id, color, val) {
+  diagState[id] = { color, val };
+  diagRefreshBoard();
+}
+
+// ── Auto-detect providers ──
+async function diagRunAutoDetect() {
+  // Anthropic
+  const antKey = document.getElementById('anthropic-key').value.trim();
+  const antModel = document.getElementById('anthropic-model').value;
+  const dcAnt = document.getElementById('dc-anthropic');
+  const pillAnt = document.getElementById('dc-pill-anthropic');
+  const isAntActive = provider === 'anthropic';
+  dcAnt.className = 'detect-card' + (isAntActive ? ' dc-active' : '');
+  pillAnt.textContent = isAntActive ? 'active' : 'not active';
+  pillAnt.style.background = isAntActive ? 'var(--bg-success)' : 'var(--bg3)';
+  pillAnt.style.color = isAntActive ? 'var(--text-success)' : 'var(--text3)';
+  const hasKey = antKey.length > 10;
+  const fmtOk = antKey.startsWith('sk-ant-');
+  document.getElementById('dcv-ant-key').textContent = hasKey ? 'sk-ant-…'+antKey.slice(-4) : 'none';
+  document.getElementById('dcv-ant-key').className = 'dc-val ' + (hasKey ? 'ok' : 'bad');
+  document.getElementById('dcv-ant-fmt').textContent = hasKey ? (fmtOk ? 'valid ✓' : 'unexpected format') : '—';
+  document.getElementById('dcv-ant-fmt').className = 'dc-val ' + (fmtOk && hasKey ? 'ok' : hasKey ? 'warn' : '');
+  document.getElementById('dcv-ant-model').textContent = antModel;
+  if(isAntActive && hasKey) {
+    document.getElementById('dcd-ant-conn').className = 'sdot checking';
+    document.getElementById('dcv-ant-conn').textContent = 'checking…';
+    try {
+      const t0 = Date.now();
+      const r = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':antKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:antModel,max_tokens:5,stream:false,messages:[{role:'user',content:'hi'}]})});
+      const ms = Date.now()-t0;
+      document.getElementById('dcd-ant-conn').className = 'sdot ' + (r.ok||r.status===200?'green':'red');
+      document.getElementById('dcv-ant-conn').textContent = r.ok ? `${r.status} OK (${ms}ms)` : `${r.status} error`;
+      document.getElementById('dcv-ant-conn').className = 'dc-val ' + (r.ok ? 'ok' : 'bad');
+    } catch(e) {
+      document.getElementById('dcd-ant-conn').className = 'sdot red';
+      document.getElementById('dcv-ant-conn').textContent = 'unreachable';
+      document.getElementById('dcv-ant-conn').className = 'dc-val bad';
+    }
+  }
+
+  // Ollama
+  const olUrl = document.getElementById('ollama-url').value.trim().replace(/\/$/,'');
+  const olModel = document.getElementById('ollama-model').value.trim();
+  const isOlActive = provider === 'ollama';
+  document.getElementById('dc-ollama').className = 'detect-card' + (isOlActive ? ' dc-active' : '');
+  const pillOl = document.getElementById('dc-pill-ollama');
+  pillOl.textContent = isOlActive ? 'active' : 'not active';
+  pillOl.style.background = isOlActive ? 'var(--bg-success)' : 'var(--bg3)';
+  pillOl.style.color = isOlActive ? 'var(--text-success)' : 'var(--text3)';
+  document.getElementById('dcv-ol-url').textContent = olUrl.replace('http://','');
+  document.getElementById('dcd-ol-srv').className = 'sdot checking';
+  document.getElementById('dcv-ol-srv').textContent = 'checking…';
+  try {
+    const tags = await fetch(olUrl+'/api/tags').then(r=>r.json());
+    const models = (tags?.models||[]).map(m=>m.name.split(':')[0]);
+    document.getElementById('dcd-ol-srv').className = 'sdot green';
+    document.getElementById('dcv-ol-srv').textContent = 'running ✓';
+    document.getElementById('dcv-ol-srv').className = 'dc-val ok';
+    document.getElementById('dcv-ol-list').textContent = models.length ? models.slice(0,3).join(', ')+(models.length>3?'…':'') : 'none pulled';
+    const modelFound = models.some(m=>olModel.startsWith(m)||m.startsWith(olModel.split(':')[0]));
+    document.getElementById('dcd-ol-model').className = 'sdot ' + (modelFound ? 'green' : 'red');
+    document.getElementById('dcv-ol-model').textContent = modelFound ? olModel+' ✓' : olModel+' — NOT FOUND';
+    document.getElementById('dcv-ol-model').className = 'dc-val ' + (modelFound ? 'ok' : 'bad');
+    if(!modelFound) diagAddLog('WARN', `Ollama model "${olModel}" not found. Run: ollama pull ${olModel}`);
+  } catch(e) {
+    document.getElementById('dcd-ol-srv').className = 'sdot red';
+    document.getElementById('dcv-ol-srv').textContent = 'not running ✗';
+    document.getElementById('dcv-ol-srv').className = 'dc-val bad';
+    document.getElementById('dcd-ol-model').className = 'sdot grey';
+    document.getElementById('dcv-ol-model').textContent = '—';
+    document.getElementById('dcv-ol-list').textContent = '—';
+    if(isOlActive) diagAddLog('ERR', 'Ollama unreachable at '+olUrl+' — run: OLLAMA_ORIGINS=* ollama serve');
+  }
+
+  // OpenAI
+  const oaiKey = document.getElementById('openai-key').value.trim();
+  const isOaiActive = provider === 'openai';
+  document.getElementById('dc-openai').className = 'detect-card' + (isOaiActive ? ' dc-active' : '');
+  const pillOai = document.getElementById('dc-pill-openai');
+  pillOai.textContent = isOaiActive ? 'active' : 'not active';
+  pillOai.style.background = isOaiActive ? 'var(--bg-success)' : 'var(--bg3)';
+  pillOai.style.color = isOaiActive ? 'var(--text-success)' : 'var(--text3)';
+  document.getElementById('dcv-oai-key').textContent = oaiKey.length>4 ? 'sk-…'+oaiKey.slice(-4) : 'none';
+  document.getElementById('dcv-oai-key').className = 'dc-val ' + (oaiKey.length>4?'ok':'');
+  document.getElementById('dcv-oai-model').textContent = document.getElementById('openai-model').value;
+
+  // Gemini
+  const gemKey = document.getElementById('gemini-key').value.trim();
+  const isGemActive = provider === 'gemini';
+  document.getElementById('dc-gemini').className = 'detect-card' + (isGemActive ? ' dc-active' : '');
+  const pillGem = document.getElementById('dc-pill-gemini');
+  pillGem.textContent = isGemActive ? 'active' : 'not active';
+  pillGem.style.background = isGemActive ? 'var(--bg-success)' : 'var(--bg3)';
+  pillGem.style.color = isGemActive ? 'var(--text-success)' : 'var(--text3)';
+  document.getElementById('dcv-gem-key').textContent = gemKey.length>4 ? 'AIza-…'+gemKey.slice(-4) : 'none';
+  document.getElementById('dcv-gem-key').className = 'dc-val ' + (gemKey.length>4?'ok':'');
+  document.getElementById('dcv-gem-model').textContent = document.getElementById('gemini-model').value;
+
+  diagAddLog('INFO', `Auto-detect complete · active provider: ${provider}`);
+}
+
+async function diagRecheck() {
+  DIAG_SIGNALS.forEach(s => {
+    const el = document.getElementById('signal-board')?.querySelector(`[data-id="${s.id}"] .sdot`);
+    if(el) el.className = 'sdot checking';
+  });
+  await diagRunAutoDetect();
+  diagAddLog('INFO', 'Manual re-check triggered');
+}
+
+// ── Logging ──
+function diagAddLog(level, msg, durationMs) {
+  const now = new Date();
+  const ts = now.toTimeString().slice(0,8);
+  diagLog.push({ ts, level, msg, dur: durationMs||null });
+  const wrap = document.getElementById('diag-log-wrap');
+  if(!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'dlog-row';
+  const lvlCls = level==='OK'?'ll-ok':level==='ERR'?'ll-err':level==='WARN'?'ll-warn':'ll-info';
+  row.innerHTML = `<div class="dlog-ts">${ts}</div><div class="dlog-lv ${lvlCls}">${level}</div><div class="dlog-msg">${msg}</div><div class="dlog-dur">${durationMs?durationMs+'ms':'—'}</div>`;
+  wrap.appendChild(row);
+  wrap.scrollTop = wrap.scrollHeight;
+  document.getElementById('diag-log-count').textContent = diagLog.length;
+}
+
+function diagExportLog() {
+  const lines = diagLog.map(e=>`[${e.ts}] [${e.level}] ${e.msg}${e.dur?' ('+e.dur+'ms)':''}`);
+  downloadText(lines.join('\n'), 'rosetta-diag-log.txt');
+}
+
+// ── Hook into existing callAI to capture timing + errors ──
+const _origCallAI = callAI;
+async function callAI(system, user, onChunk) {
+  const t0 = Date.now();
+  try {
+    const result = await _origCallAI(system, user, onChunk);
+    const ms = Date.now()-t0;
+    diagSessionStats.requests++;
+    diagSessionStats.totalMs += ms;
+    diagSessionStats.lastMs = ms;
+    const slow = ms > 8000;
+    diagSet('api',    'green', 'responding');
+    diagSet('auth',   'green', 'accepted');
+    diagSet('speed',  slow?'amber':'green', slow?`slow (${(ms/1000).toFixed(1)}s)`:`${(ms/1000).toFixed(1)}s avg`);
+    diagSet('stream', 'green', 'clean');
+    diagSet('errors', diagSessionStats.errors===0?'green':diagSessionStats.errors<3?'amber':'red', `${diagSessionStats.errors} error${diagSessionStats.errors!==1?'s':''}`);
+    const isEmpty = !result || result.trim().length === 0;
+    diagSet('output', isEmpty?'amber':'green', isEmpty?'empty response':'valid');
+    diagSet('complete','green','ended normally');
+    diagAddLog('OK', `${provider} response · ${(ms/1000).toFixed(1)}s · ${Math.ceil(result.length/4)} est. tokens`, ms);
+    diagFirstRun = true;
+    diagRefreshBoard();
+    return result;
+  } catch(e) {
+    const ms = Date.now()-t0;
+    diagSessionStats.errors++;
+    const is401 = e.message.includes('401')||e.message.toLowerCase().includes('unauthorized')||e.message.toLowerCase().includes('api key');
+    const isTimeout = e.message.toLowerCase().includes('timeout')||e.message.toLowerCase().includes('network');
+    diagSet('api',    isTimeout?'red':'green', isTimeout?'unreachable':'attempted');
+    diagSet('auth',   is401?'red':'grey', is401?'401 Unauthorized':'—');
+    diagSet('speed',  'red', 'failed');
+    diagSet('stream', 'red', 'error');
+    diagSet('errors', diagSessionStats.errors<3?'amber':'red', `${diagSessionStats.errors} error${diagSessionStats.errors!==1?'s':''}`);
+    diagSet('output', 'red', 'no response');
+    diagAddLog('ERR', `${provider} error: ${e.message}`, ms);
+    diagFirstRun = true;
+    diagRefreshBoard();
+    throw e;
+  }
+}
+
+// Log page load
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(()=>diagAddLog('INFO', 'Page loaded · provider: '+provider), 100);
+});
 </script>
 </body>
 </html>
