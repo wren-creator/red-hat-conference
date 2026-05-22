@@ -301,8 +301,14 @@
             <select id="ollama-model">
               <option value="qwen2.5-coder">qwen2.5-coder (default)</option>
             </select>
+            <input type="text" id="ollama-model-manual" placeholder="Or type model name manually…" style="margin-top:4px;display:none;" oninput="syncOllamaManual(this.value)">
           </div>
           <p class="settings-note">Run with CORS enabled: <code style="font-family:var(--mono);font-size:10px;">OLLAMA_ORIGINS=* ollama serve</code><br>Models are loaded from your running Ollama instance. Context window is managed automatically.</p>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn btn-sm" onclick="ollamaProbe()" style="flex:1;">🔍 Test &amp; load models</button>
+            <button class="btn btn-sm" onclick="refreshOllamaModels()" style="flex:1;">↺ Retry fetch</button>
+          </div>
+          <div id="ollama-probe-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);line-height:1.6;word-break:break-all;border:0.5px solid var(--border);background:var(--bg2);color:var(--text2);"></div>
         </div>
 
         <!-- Anthropic fields -->
@@ -705,24 +711,35 @@ function setProvider(p) {
 
 // ─── Ollama model loading ─────────────────────────────────────────
 async function fetchOllamaModels() {
-  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
-  const resp = await fetch(base + '/api/tags');
-  if (!resp.ok) throw new Error('Ollama /api/tags returned ' + resp.status);
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '') || 'http://localhost:11434';
+  // Use AbortController so a hung Ollama doesn't block the UI forever
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  let resp;
+  try {
+    resp = await fetch(base + '/api/tags', { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!resp.ok) throw new Error('Ollama /api/tags returned HTTP ' + resp.status);
   const data = await resp.json();
-  return (data.models || []).map(m => m.name);
+  const models = (data.models || []).map(m => m.name);
+  if (!models.length) throw new Error('Ollama is running but has no models pulled yet');
+  return models;
 }
 
 function populateOllamaModelDropdown(models) {
   const select = document.getElementById('ollama-model');
-  const prev = select.value;
+  const manual = document.getElementById('ollama-model-manual');
   select.innerHTML = '';
+  manual.style.display = 'none'; // hide manual input when we have real models
   models.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
     select.appendChild(opt);
   });
-  // Restore saved preference or pick best coder model
+  // Restore saved preference, or prefer a coder model, or first available
   const saved = localStorage.getItem('rs_ollama_model');
   if (saved && models.includes(saved)) {
     select.value = saved;
@@ -732,23 +749,51 @@ function populateOllamaModelDropdown(models) {
   }
 }
 
+function ollamaModelFallback(reason) {
+  const select = document.getElementById('ollama-model');
+  const manual = document.getElementById('ollama-model-manual');
+  const saved = localStorage.getItem('rs_ollama_model') || 'qwen2.5-coder';
+  select.innerHTML = '';
+  const opt = document.createElement('option');
+  opt.value = saved;
+  opt.textContent = saved + ' (not verified)';
+  select.appendChild(opt);
+  select.setAttribute('title', reason);
+  // Show the manual text input so user can type any model name
+  manual.style.display = '';
+  manual.value = saved;
+  manual.placeholder = 'Type model name (e.g. qwen2.5-coder:7b)';
+}
+
+function syncOllamaManual(val) {
+  // Keep the select value in sync with what the user types
+  const select = document.getElementById('ollama-model');
+  if (select.options.length > 0) {
+    select.options[0].value = val;
+    select.options[0].textContent = val || 'qwen2.5-coder';
+    select.value = select.options[0].value;
+  }
+}
+
 async function loadOllamaModels() {
   const select = document.getElementById('ollama-model');
-  select.innerHTML = '<option disabled>Loading models…</option>';
+  select.innerHTML = '<option disabled>Connecting to Ollama…</option>';
   try {
     if (!cachedOllamaModels) {
       cachedOllamaModels = await fetchOllamaModels();
     }
-    if (cachedOllamaModels.length) {
-      populateOllamaModelDropdown(cachedOllamaModels);
-      diagAddLog('OK', 'Loaded ' + cachedOllamaModels.length + ' Ollama model(s)');
-    } else {
-      select.innerHTML = '<option value="qwen2.5-coder">qwen2.5-coder (default)</option>';
-      diagAddLog('WARN', 'No models returned from Ollama — is it running?');
-    }
+    populateOllamaModelDropdown(cachedOllamaModels);
+    diagAddLog('OK', 'Loaded ' + cachedOllamaModels.length + ' Ollama model(s)');
   } catch (e) {
-    select.innerHTML = '<option value="qwen2.5-coder">qwen2.5-coder (default)</option>';
-    diagAddLog('ERR', 'Could not load Ollama models: ' + e.message);
+    cachedOllamaModels = null; // don't cache failures — allow retry
+    const isCors = e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('networkerror') || e.name === 'TypeError';
+    const isTimeout = e.name === 'AbortError';
+    let hint;
+    if (isTimeout) hint = 'timeout — Ollama not responding';
+    else if (isCors) hint = 'CORS error — restart Ollama with: OLLAMA_ORIGINS=* ollama serve';
+    else hint = e.message;
+    ollamaModelFallback(hint);
+    diagAddLog('ERR', 'Ollama model load failed: ' + hint);
   }
 }
 
@@ -756,6 +801,78 @@ async function refreshOllamaModels() {
   cachedOllamaModels = null; // bust cache on URL change
   await loadOllamaModels();
 }
+
+// ─── Ollama probe — shows raw diagnostic output in the UI ─────────
+async function ollamaProbe() {
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '') || 'http://localhost:11434';
+  const out = document.getElementById('ollama-probe-result');
+  out.style.display = '';
+  out.style.color = 'var(--text2)';
+  out.textContent = '⏳ Probing ' + base + ' …';
+
+  const steps = [];
+  const ok  = s => steps.push('✅ ' + s);
+  const err = s => steps.push('❌ ' + s);
+  const inf = s => steps.push('ℹ️  ' + s);
+
+  // Step 1 — basic reachability
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const r = await fetch(base, { signal: controller.signal });
+    clearTimeout(timer);
+    const text = await r.text();
+    ok('Server reachable — HTTP ' + r.status);
+    if (text.toLowerCase().includes('ollama')) ok('Root response looks like Ollama');
+    else inf('Root response: ' + text.slice(0, 60));
+    const corsHeader = r.headers.get('access-control-allow-origin');
+    if (corsHeader) ok('CORS header present: ' + corsHeader);
+    else err('No Access-Control-Allow-Origin header — CORS not enabled');
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      err('Connection timed out after 4s — Ollama may not be running');
+    } else if (e.message.toLowerCase().includes('failed to fetch') || e instanceof TypeError) {
+      err('Network error / CORS block — browser refused the request');
+      inf('Fix: restart Ollama with   OLLAMA_ORIGINS=* ollama serve');
+    } else {
+      err('Unexpected error: ' + e.message);
+    }
+    out.textContent = steps.join('\n');
+    out.style.color = 'var(--text-danger)';
+    return;
+  }
+
+  // Step 2 — /api/tags
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const r = await fetch(base + '/api/tags', { signal: controller.signal });
+    clearTimeout(timer);
+    const corsHeader = r.headers.get('access-control-allow-origin');
+    if (corsHeader) ok('/api/tags CORS header: ' + corsHeader);
+    else err('/api/tags missing CORS header — fetch() will be blocked');
+    if (!r.ok) { err('/api/tags returned HTTP ' + r.status); out.textContent = steps.join('\n'); return; }
+    const data = await r.json();
+    const models = (data.models || []).map(m => m.name);
+    if (models.length) {
+      ok('Found ' + models.length + ' model(s): ' + models.join(', '));
+      cachedOllamaModels = models;
+      populateOllamaModelDropdown(models);
+      diagAddLog('OK', 'Probe loaded ' + models.length + ' Ollama model(s)');
+    } else {
+      err('/api/tags returned empty models array');
+      inf('Run:  ollama pull qwen2.5-coder');
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') err('/api/tags timed out');
+    else err('/api/tags fetch failed: ' + e.message);
+  }
+
+  out.textContent = steps.join('\n');
+  const hasErr = steps.some(s => s.startsWith('❌'));
+  out.style.color = hasErr ? 'var(--text-danger)' : 'var(--text-success)';
+}
+
 
 // ─── Gemini model loading ─────────────────────────────────────────
 async function fetchGeminiModels() {
