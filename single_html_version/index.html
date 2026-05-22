@@ -157,7 +157,6 @@
   .tab-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 5px; vertical-align: middle; }
   .dot-done { background: #1D9E75; } .dot-warn { background: #BA7517; } .dot-run { background: #378ADD; }
 
-  /* Output boxes — with auto-scroll and external action buttons */
   .out-wrap { position: relative; margin-top: 1px; }
   .out-box { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--text); min-height: 160px; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; scroll-behavior: smooth; }
   .out-box.prose { font-family: var(--sans); font-size: 13.5px; line-height: 1.8; }
@@ -209,10 +208,12 @@
   .sdot.amber { background: #BA7517; box-shadow: 0 0 5px #BA7517; animation: pulse-a 2s ease-in-out infinite; }
   .sdot.red   { background: #E24B4A; box-shadow: 0 0 5px #E24B4A; animation: pulse-r 1.2s ease-in-out infinite; }
   .sdot.grey  { background: var(--text3); box-shadow: none; }
+  .sdot.checking { background: var(--text3); box-shadow: none; animation: pulse-c 0.8s ease-in-out infinite; }
   @keyframes pulse-a { 0%,100%{box-shadow:0 0 4px #BA7517;} 50%{box-shadow:0 0 10px #BA7517;} }
   @keyframes pulse-r { 0%,100%{box-shadow:0 0 4px #E24B4A;} 50%{box-shadow:0 0 12px #E24B4A;} }
+  @keyframes pulse-c { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
   .sig-name { color: var(--text2); flex: 1; }
-  .sig-val  { color: var(--text); font-size: 11px; text-align: right; }
+  .sig-val  { color: var(--text); font-size: 11px; text-align: right; max-width: 160px; }
   .sig-val.amber { color: var(--text-warn); }
   .sig-val.red   { color: var(--text-danger); }
   .health-banner { display: flex; align-items: flex-start; gap: 10px; padding: 9px 13px; border-radius: var(--radius); margin-bottom: 1rem; font-size: 12px; border: 0.5px solid; }
@@ -244,6 +245,7 @@
   .diag-export { font-size: 11px; color: var(--text3); background: none; border: none; cursor: pointer; font-family: var(--sans); padding: 0; }
   .diag-export:hover { color: var(--text); }
   .dc-pill { font-size: 10px; padding: 2px 8px; border-radius: 100px; }
+  .diag-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin: 1rem 0 8px; }
 </style>
 </head>
 <body>
@@ -292,13 +294,15 @@
           <span class="provider-badge badge-ollama">🖥️ Ollama</span>
           <div class="field">
             <label>Ollama base URL</label>
-            <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+            <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434" onblur="refreshOllamaModels()">
           </div>
           <div class="field">
             <label>Model name</label>
-            <input type="text" id="ollama-model" value="qwen2.5-coder" placeholder="e.g. qwen2.5-coder, llama3.1:70b">
+            <select id="ollama-model">
+              <option value="qwen2.5-coder">qwen2.5-coder (default)</option>
+            </select>
           </div>
-          <p class="settings-note">Run with CORS enabled: <code style="font-family:var(--mono);font-size:10px;">OLLAMA_ORIGINS=* ollama serve</code><br>Context window is managed automatically based on script size.</p>
+          <p class="settings-note">Run with CORS enabled: <code style="font-family:var(--mono);font-size:10px;">OLLAMA_ORIGINS=* ollama serve</code><br>Models are loaded from your running Ollama instance. Context window is managed automatically.</p>
         </div>
 
         <!-- Anthropic fields -->
@@ -328,7 +332,7 @@
           <div class="field">
             <label>API Key</label>
             <div class="key-row">
-              <input type="password" id="openai-key" placeholder="sk-…" autocomplete="off">
+              <input type="password" id="openai-key" placeholder="sk-…" autocomplete="off" onblur="refreshOpenAIModels()">
               <button class="btn btn-sm" onclick="toggleVis('openai-key',this)">Show</button>
             </div>
           </div>
@@ -340,7 +344,7 @@
               <option value="gpt-4-turbo">GPT-4 Turbo</option>
             </select>
           </div>
-          <p class="settings-note">&#128274; Key held in memory only. Up to 128K token context window.</p>
+          <p class="settings-note">&#128274; Key held in memory only. Chat models are loaded from the API after entering your key. Up to 128K token context window.</p>
         </div>
 
         <!-- Gemini fields -->
@@ -349,7 +353,7 @@
           <div class="field">
             <label>API Key</label>
             <div class="key-row">
-              <input type="password" id="gemini-key" placeholder="AIza…" autocomplete="off">
+              <input type="password" id="gemini-key" placeholder="AIza…" autocomplete="off" onblur="refreshGeminiModels()">
               <button class="btn btn-sm" onclick="toggleVis('gemini-key',this)">Show</button>
             </div>
           </div>
@@ -357,11 +361,11 @@
             <label>Model</label>
             <select id="gemini-model">
               <option value="gemini-1.5-pro">Gemini 1.5 Pro (1M ctx)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (fastest)</option>
+              <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash (fastest)</option>
               <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             </select>
           </div>
-          <p class="settings-note">&#128274; Key held in memory only. Up to 1M token context window.</p>
+          <p class="settings-note">&#128274; Key held in memory only. Models are loaded from the API after entering your key. Up to 1M token context window.</p>
         </div>
 
         <div class="conn-status">
@@ -414,7 +418,7 @@
   <div class="diag-panel" id="diag-panel">
     <div class="diag-title-row">
       🔬 Diagnostics &amp; Troubleshooting
-      <button class="diag-recheck" onclick="diagRunAutoDetect()">↺ Re-check now</button>
+      <button class="diag-recheck" onclick="diagRecheck()">↺ Re-check now</button>
     </div>
     <div class="diag-tabs">
       <button class="dtab active" onclick="switchDTab('health')" id="dtab-health">Signal Board</button>
@@ -478,7 +482,7 @@
           </div>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:10px;">Runs automatically on panel open and provider switch.</div>
+      <div class="diag-section-label" style="margin-top:1rem;">Detection runs on panel open, provider switch &amp; after each run</div>
     </div>
 
     <!-- Activity Log -->
@@ -493,14 +497,12 @@
 
   <!-- Main card -->
   <div class="card">
-    <!-- Provider indicator chip -->
     <div class="provider-chip" id="provider-chip">
       <div class="pchip-dot c-grey" id="chip-dot"></div>
       <span id="chip-label">Ollama (local)</span>
       <span id="chip-ctx" style="margin-left:auto;font-size:11px;color:var(--text3);"></span>
     </div>
 
-    <!-- Context warning (Ollama only) -->
     <div class="ctx-banner" id="ctx-banner"></div>
 
     <div class="row2">
@@ -648,16 +650,22 @@ const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk'
 let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='ollama';
 
+// Model caches — cleared on provider/URL change so stale lists don't linger
+let cachedOllamaModels = null;
+let cachedOpenAIModels = null;
+let cachedGeminiModels = null;
+
 // ─── Init ─────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   const savedProv = localStorage.getItem('rs_provider') || 'ollama';
-  setProvider(savedProv);
-  const m = localStorage.getItem('rs_anthropic_model'); if(m) document.getElementById('anthropic-model').value=m;
+  // Restore text inputs before setProvider so URL is correct when Ollama fetches
   const ou = localStorage.getItem('rs_ollama_url'); if(ou) document.getElementById('ollama-url').value=ou;
-  const om = localStorage.getItem('rs_ollama_model'); if(om) document.getElementById('ollama-model').value=om;
   const gm = localStorage.getItem('rs_gemini_model'); if(gm) document.getElementById('gemini-model').value=gm;
   const oi = localStorage.getItem('rs_openai_model'); if(oi) document.getElementById('openai-model').value=oi;
+  const am = localStorage.getItem('rs_anthropic_model'); if(am) document.getElementById('anthropic-model').value=am;
+  setProvider(savedProv);
   loadSample();
+  setTimeout(() => diagAddLog('INFO', 'Page loaded · provider: ' + provider), 150);
 });
 
 // ─── Settings ─────────────────────────────────────────────────────
@@ -668,7 +676,7 @@ function setProvider(p) {
   localStorage.setItem('rs_provider', p);
   document.getElementById('provider-select').value = p;
   document.querySelectorAll('.provider-fields').forEach(el => el.classList.remove('active'));
-  document.getElementById('fields-'+p).classList.add('active');
+  document.getElementById('fields-' + p).classList.add('active');
   resetConnStatus();
 
   // Update chip
@@ -676,13 +684,203 @@ function setProvider(p) {
   const label = document.getElementById('chip-label');
   const ctx = document.getElementById('chip-ctx');
   dot.className = 'pchip-dot';
-  if(p==='anthropic'){ dot.classList.add('c-orange'); label.textContent='Anthropic Claude'; ctx.textContent='200K ctx'; }
-  else if(p==='openai'){ dot.classList.add('c-green'); label.textContent='OpenAI GPT'; ctx.textContent='128K ctx'; }
-  else if(p==='gemini'){ dot.classList.add('c-blue'); label.textContent='Google Gemini'; ctx.textContent='1M ctx'; }
-  else { dot.classList.add('c-grey'); label.textContent='Ollama (local)'; ctx.textContent='auto ctx'; }
+  if (p === 'anthropic') { dot.classList.add('c-orange'); label.textContent = 'Anthropic Claude'; ctx.textContent = '200K ctx'; }
+  else if (p === 'openai') { dot.classList.add('c-green'); label.textContent = 'OpenAI GPT'; ctx.textContent = '128K ctx'; }
+  else if (p === 'gemini') { dot.classList.add('c-blue'); label.textContent = 'Google Gemini'; ctx.textContent = '1M ctx'; }
+  else { dot.classList.add('c-grey'); label.textContent = 'Ollama (local)'; ctx.textContent = 'auto ctx'; }
 
-  diagAddLog('INFO','Provider switched to: '+p);
-  if(document.getElementById('diag-panel').classList.contains('open')) diagRunAutoDetect();
+  diagAddLog('INFO', 'Provider switched to: ' + p);
+
+  // Populate dynamic model dropdowns
+  if (p === 'ollama') {
+    loadOllamaModels();
+  } else if (p === 'openai') {
+    loadOpenAIModels();
+  } else if (p === 'gemini') {
+    loadGeminiModels();
+  }
+
+  if (document.getElementById('diag-panel').classList.contains('open')) diagRunAutoDetect();
+}
+
+// ─── Ollama model loading ─────────────────────────────────────────
+async function fetchOllamaModels() {
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
+  const resp = await fetch(base + '/api/tags');
+  if (!resp.ok) throw new Error('Ollama /api/tags returned ' + resp.status);
+  const data = await resp.json();
+  return (data.models || []).map(m => m.name);
+}
+
+function populateOllamaModelDropdown(models) {
+  const select = document.getElementById('ollama-model');
+  const prev = select.value;
+  select.innerHTML = '';
+  models.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+  // Restore saved preference or pick best coder model
+  const saved = localStorage.getItem('rs_ollama_model');
+  if (saved && models.includes(saved)) {
+    select.value = saved;
+  } else {
+    const best = models.find(m => m.toLowerCase().includes('coder')) || models[0];
+    if (best) select.value = best;
+  }
+}
+
+async function loadOllamaModels() {
+  const select = document.getElementById('ollama-model');
+  select.innerHTML = '<option disabled>Loading models…</option>';
+  try {
+    if (!cachedOllamaModels) {
+      cachedOllamaModels = await fetchOllamaModels();
+    }
+    if (cachedOllamaModels.length) {
+      populateOllamaModelDropdown(cachedOllamaModels);
+      diagAddLog('OK', 'Loaded ' + cachedOllamaModels.length + ' Ollama model(s)');
+    } else {
+      select.innerHTML = '<option value="qwen2.5-coder">qwen2.5-coder (default)</option>';
+      diagAddLog('WARN', 'No models returned from Ollama — is it running?');
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="qwen2.5-coder">qwen2.5-coder (default)</option>';
+    diagAddLog('ERR', 'Could not load Ollama models: ' + e.message);
+  }
+}
+
+async function refreshOllamaModels() {
+  cachedOllamaModels = null; // bust cache on URL change
+  await loadOllamaModels();
+}
+
+// ─── Gemini model loading ─────────────────────────────────────────
+async function fetchGeminiModels() {
+  const key = document.getElementById('gemini-key').value.trim();
+  if (!key) return [];
+  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
+  if (!resp.ok) throw new Error('Gemini models API returned ' + resp.status);
+  const data = await resp.json();
+  return (data.models || []).filter(m =>
+    (m.supportedGenerationMethods || []).includes('generateContent')
+  );
+}
+
+function populateGeminiModelDropdown(models) {
+  const select = document.getElementById('gemini-model');
+  const prev = select.value;
+  select.innerHTML = '';
+  models.forEach(m => {
+    const shortName = m.name.replace('models/', '');
+    const opt = document.createElement('option');
+    opt.value = shortName;
+    opt.textContent = m.displayName || shortName;
+    select.appendChild(opt);
+  });
+  // Restore saved preference
+  const saved = localStorage.getItem('rs_gemini_model');
+  const allVals = models.map(m => m.name.replace('models/', ''));
+  if (saved && allVals.includes(saved)) select.value = saved;
+  else if (prev && allVals.includes(prev)) select.value = prev;
+}
+
+async function loadGeminiModels() {
+  const key = document.getElementById('gemini-key').value.trim();
+  if (!key) return; // Silently skip — user hasn't entered key yet
+  const select = document.getElementById('gemini-model');
+  select.innerHTML = '<option disabled>Loading models…</option>';
+  try {
+    if (!cachedGeminiModels) {
+      cachedGeminiModels = await fetchGeminiModels();
+    }
+    if (cachedGeminiModels.length) {
+      populateGeminiModelDropdown(cachedGeminiModels);
+      diagAddLog('OK', 'Loaded ' + cachedGeminiModels.length + ' Gemini model(s)');
+    } else {
+      // Restore static defaults if API returns nothing
+      select.innerHTML = '<option value="gemini-1.5-pro">Gemini 1.5 Pro</option><option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option><option value="gemini-2.0-flash">Gemini 2.0 Flash</option>';
+      diagAddLog('WARN', 'No Gemini models returned — check API key');
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="gemini-1.5-pro">Gemini 1.5 Pro</option><option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option><option value="gemini-2.0-flash">Gemini 2.0 Flash</option>';
+    diagAddLog('ERR', 'Could not load Gemini models: ' + e.message);
+  }
+}
+
+async function refreshGeminiModels() {
+  cachedGeminiModels = null; // bust cache on key change
+  await loadGeminiModels();
+}
+
+// ─── OpenAI model loading ─────────────────────────────────────────
+// Chat-capable model prefixes — filters out embeddings, whisper, dall-e, tts, etc.
+const OPENAI_CHAT_PREFIXES = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'o3'];
+const OPENAI_STATIC_FALLBACK = [
+  { id: 'gpt-4o',       label: 'GPT-4o (recommended)' },
+  { id: 'gpt-4o-mini',  label: 'GPT-4o mini (fastest)' },
+  { id: 'gpt-4-turbo',  label: 'GPT-4 Turbo' },
+];
+
+async function fetchOpenAIModels() {
+  const key = document.getElementById('openai-key').value.trim();
+  if (!key) return [];
+  const resp = await fetch('https://api.openai.com/v1/models', {
+    headers: { 'Authorization': 'Bearer ' + key }
+  });
+  if (!resp.ok) throw new Error('OpenAI /v1/models returned ' + resp.status);
+  const data = await resp.json();
+  return (data.data || [])
+    .filter(m => OPENAI_CHAT_PREFIXES.some(prefix => m.id.startsWith(prefix)))
+    .sort((a, b) => b.created - a.created) // newest first
+    .map(m => ({ id: m.id, label: m.id }));
+}
+
+function populateOpenAIModelDropdown(models) {
+  const select = document.getElementById('openai-model');
+  const prev = select.value;
+  select.innerHTML = '';
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.label;
+    select.appendChild(opt);
+  });
+  // Restore saved preference
+  const saved = localStorage.getItem('rs_openai_model');
+  const allIds = models.map(m => m.id);
+  if (saved && allIds.includes(saved)) select.value = saved;
+  else if (prev && allIds.includes(prev)) select.value = prev;
+  else if (allIds.includes('gpt-4o')) select.value = 'gpt-4o';
+}
+
+async function loadOpenAIModels() {
+  const key = document.getElementById('openai-key').value.trim();
+  if (!key) return; // Silently skip — user hasn't entered key yet
+  const select = document.getElementById('openai-model');
+  select.innerHTML = '<option disabled>Loading models…</option>';
+  try {
+    if (!cachedOpenAIModels) {
+      cachedOpenAIModels = await fetchOpenAIModels();
+    }
+    if (cachedOpenAIModels.length) {
+      populateOpenAIModelDropdown(cachedOpenAIModels);
+      diagAddLog('OK', 'Loaded ' + cachedOpenAIModels.length + ' OpenAI chat model(s)');
+    } else {
+      populateOpenAIModelDropdown(OPENAI_STATIC_FALLBACK);
+      diagAddLog('WARN', 'No chat models returned — using defaults');
+    }
+  } catch (e) {
+    populateOpenAIModelDropdown(OPENAI_STATIC_FALLBACK);
+    diagAddLog('ERR', 'Could not load OpenAI models: ' + e.message);
+  }
+}
+
+async function refreshOpenAIModels() {
+  cachedOpenAIModels = null; // bust cache on key change
+  await loadOpenAIModels();
 }
 
 function savePrefs() {
@@ -695,30 +893,26 @@ function savePrefs() {
 
 function toggleVis(id, btn) {
   const inp = document.getElementById(id);
-  inp.type = inp.type==='password' ? 'text' : 'password';
-  btn.textContent = inp.type==='password' ? 'Show' : 'Hide';
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? 'Show' : 'Hide';
 }
 
 function resetConnStatus() {
-  document.getElementById('conn-dot').className='conn-dot';
-  document.getElementById('conn-label').textContent='Not tested';
+  document.getElementById('conn-dot').className = 'conn-dot';
+  document.getElementById('conn-label').textContent = 'Not tested';
 }
-function showConnStatus(msg,ok,err) {
-  document.getElementById('conn-dot').className='conn-dot'+(ok?' ok':err?' err':'');
-  document.getElementById('conn-label').textContent=msg;
+function showConnStatus(msg, ok, err) {
+  document.getElementById('conn-dot').className = 'conn-dot' + (ok ? ' ok' : err ? ' err' : '');
+  document.getElementById('conn-label').textContent = msg;
 }
 
 async function testConnection() {
   showConnStatus('Testing…', false, false);
   savePrefs();
   try {
-    const r = await callAI('You are a test assistant.', 'Say hello.', ()=>{});
-    if(r && r.trim().length > 0) {
-      showConnStatus('Connected — ' + r.trim().slice(0, 40), true, false);
-    } else {
-      showConnStatus('Got empty response', false, false);
-    }
-  } catch(e) {
+    const r = await callAI('You are a test assistant.', 'Say hello in one short sentence.', () => {});
+    showConnStatus('Connected — ' + r.trim().slice(0, 50), true, false);
+  } catch (e) {
     showConnStatus('Failed: ' + e.message, false, true);
   }
 }
@@ -727,516 +921,162 @@ async function testConnection() {
 async function checkOllamaContext(code) {
   const estimatedTokens = Math.ceil(code.length / 4);
   const banner = document.getElementById('ctx-banner');
-  banner.className='ctx-banner'; // hide
+  banner.className = 'ctx-banner';
 
-  if(provider !== 'ollama') return {ok:true, estimatedTokens, numCtx:null};
+  if (provider !== 'ollama') return { ok: true, estimatedTokens, numCtx: null };
 
-  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/,'');
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
   let currentCtx = 4096;
   try {
-    const ps = await fetch(base+'/api/ps').then(r=>r.json());
+    const ps = await fetch(base + '/api/ps').then(r => r.json());
     const loaded = ps?.models?.[0];
-    if(loaded?.model) {
-      const info = await fetch(base+'/api/show',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:loaded.model})}).then(r=>r.json());
+    if (loaded?.model) {
+      const info = await fetch(base + '/api/show', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: loaded.model }) }).then(r => r.json());
       currentCtx = info?.model_info?.['llama.context_length'] || info?.parameters?.num_ctx || 4096;
     }
-  } catch{}
+  } catch {}
 
-  const totalNeeded = estimatedTokens + 2048; // prompt + generation buffer
-  if(totalNeeded <= currentCtx) return {ok:true, estimatedTokens, numCtx:null};
+  const totalNeeded = estimatedTokens + 2048;
+  if (totalNeeded <= currentCtx) return { ok: true, estimatedTokens, numCtx: null };
 
   const MAX_SAFE_CTX = 16384;
-  if(totalNeeded <= MAX_SAFE_CTX) {
+  if (totalNeeded <= MAX_SAFE_CTX) {
     const newCtx = Math.min(totalNeeded + 1024, MAX_SAFE_CTX);
-    banner.className='ctx-banner show ctx-amber';
-    banner.innerHTML=`<strong>&#9888; Large script — auto-expanding context</strong>Script is ~${estimatedTokens.toLocaleString()} tokens. Increasing Ollama context to ${newCtx.toLocaleString()} — may cause a brief delay.`;
-    return {ok:true, estimatedTokens, numCtx:newCtx, warned:true};
+    banner.className = 'ctx-banner show ctx-amber';
+    banner.innerHTML = `<strong>&#9888; Large script — auto-expanding context</strong>Script is ~${estimatedTokens.toLocaleString()} tokens. Increasing Ollama context to ${newCtx.toLocaleString()} — may cause a brief delay.`;
+    return { ok: true, estimatedTokens, numCtx: newCtx, warned: true };
   }
 
-  // Too large — block and prompt to switch
-  banner.className='ctx-banner show ctx-red';
-  banner.innerHTML=`<strong>&#9940; Script too large for Ollama resources</strong>~${estimatedTokens.toLocaleString()} tokens exceeds your model's safe context (~${currentCtx.toLocaleString()}). Switch to a cloud provider for this conversion.<br><br><button class="btn btn-sm" onclick="document.getElementById('settings-panel').classList.add('open');document.getElementById('provider-select').focus()">&#9881; Switch provider in Settings</button>`;
-  return {ok:false, estimatedTokens};
+  banner.className = 'ctx-banner show ctx-red';
+  banner.innerHTML = `<strong>&#9940; Script too large for Ollama resources</strong>~${estimatedTokens.toLocaleString()} tokens exceeds your model's safe context (~${currentCtx.toLocaleString()}). Switch to a cloud provider for this conversion.<br><br><button class="btn btn-sm" onclick="document.getElementById('settings-panel').classList.add('open');document.getElementById('provider-select').focus()">&#9881; Switch provider in Settings</button>`;
+  return { ok: false, estimatedTokens };
 }
 
-// ─── AI providers ─────────────────────────────────────────────────
-async function callAI(system, user, onChunk) {
-  switch(provider) {
+// ─── AI providers — pure router (no side effects) ─────────────────
+async function baseCallAI(system, user, onChunk) {
+  switch (provider) {
     case 'anthropic': return callAnthropic(system, user, onChunk);
     case 'openai':    return callOpenAI(system, user, onChunk);
     case 'gemini':    return callGemini(system, user, onChunk);
     case 'ollama':    return callOllama(system, user, onChunk);
-    default: throw new Error('Unknown provider: '+provider);
+    default: throw new Error('Unknown provider: ' + provider);
   }
 }
 
 async function callAnthropic(system, user, onChunk) {
   const key = document.getElementById('anthropic-key').value.trim();
-  if(!key) throw new Error('No Anthropic API key set. Open Settings and enter your key.');
+  if (!key) throw new Error('No Anthropic API key set. Open Settings and enter your key.');
   const model = document.getElementById('anthropic-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const resp = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model,max_tokens:maxTok,stream:true,temperature:temp,system,messages:[{role:'user',content:user}]})
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model, max_tokens: maxTok, stream: true, temperature: temp, system, messages: [{ role: 'user', content: user }] })
   });
-  if(!resp.ok){const e=await resp.json().catch(()=>({error:{message:resp.statusText}}));throw new Error(e?.error?.message||'Anthropic error '+resp.status);}
-  const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf='',full='';
-  while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
-    const lines=buf.split('\n');buf=lines.pop();
-    for(const line of lines){if(!line.startsWith('data: '))continue;const d=line.slice(6).trim();if(d==='[DONE]')continue;
-      try{const delta=JSON.parse(d)?.delta?.text||'';if(delta){full+=delta;onChunk(full);}}catch{}}}
+  if (!resp.ok) { const e = await resp.json().catch(() => ({ error: { message: resp.statusText } })); throw new Error(e?.error?.message || 'Anthropic error ' + resp.status); }
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue; const d = line.slice(6).trim(); if (d === '[DONE]') continue;
+      try { const delta = JSON.parse(d)?.delta?.text || ''; if (delta) { full += delta; onChunk(full); } } catch {}
+    }
+  }
   return full;
 }
 
 async function callOpenAI(system, user, onChunk) {
   const key = document.getElementById('openai-key').value.trim();
-  if(!key) throw new Error('No OpenAI API key set. Open Settings and enter your key.');
+  if (!key) throw new Error('No OpenAI API key set. Open Settings and enter your key.');
   const model = document.getElementById('openai-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const resp = await fetch('https://api.openai.com/v1/chat/completions',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify({model,max_tokens:maxTok,stream:true,temperature:temp,messages:[{role:'system',content:system},{role:'user',content:user}]})
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({ model, max_tokens: maxTok, stream: true, temperature: temp, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
   });
-  if(!resp.ok){const e=await resp.json().catch(()=>({error:{message:resp.statusText}}));throw new Error(e?.error?.message||'OpenAI error '+resp.status);}
-  const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf='',full='';
-  while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
-    const lines=buf.split('\n');buf=lines.pop();
-    for(const line of lines){if(!line.startsWith('data: '))continue;const d=line.slice(6).trim();if(d==='[DONE]')continue;
-      try{const delta=JSON.parse(d)?.choices?.[0]?.delta?.content||'';if(delta){full+=delta;onChunk(full);}}catch{}}}
+  if (!resp.ok) { const e = await resp.json().catch(() => ({ error: { message: resp.statusText } })); throw new Error(e?.error?.message || 'OpenAI error ' + resp.status); }
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue; const d = line.slice(6).trim(); if (d === '[DONE]') continue;
+      try { const delta = JSON.parse(d)?.choices?.[0]?.delta?.content || ''; if (delta) { full += delta; onChunk(full); } } catch {}
+    }
+  }
   return full;
 }
 
 async function callGemini(system, user, onChunk) {
   const key = document.getElementById('gemini-key').value.trim();
-  if(!key) throw new Error('No Gemini API key set. Open Settings and enter your key.');
+  if (!key) throw new Error('No Gemini API key set. Open Settings and enter your key.');
   const model = document.getElementById('gemini-model').value;
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':streamGenerateContent?alt=sse&key=' + key;
   const resp = await fetch(url, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      system_instruction:{parts:[{text:system}]},
-      contents:[{role:'user',parts:[{text:user}]}],
-      generationConfig:{maxOutputTokens:maxTok,temperature:temp}
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { maxOutputTokens: maxTok, temperature: temp }
     })
   });
-  if(!resp.ok){const e=await resp.json().catch(()=>({error:{message:resp.statusText}}));throw new Error(e?.error?.message||'Gemini error '+resp.status);}
-  const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf='',full='';
-  while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
-    const lines=buf.split('\n');buf=lines.pop();
-    for(const line of lines){if(!line.startsWith('data: '))continue;const d=line.slice(6).trim();
-      try{const delta=JSON.parse(d)?.candidates?.[0]?.content?.parts?.[0]?.text||'';if(delta){full+=delta;onChunk(full);}}catch{}}}
+  if (!resp.ok) { const e = await resp.json().catch(() => ({ error: { message: resp.statusText } })); throw new Error(e?.error?.message || 'Gemini error ' + resp.status); }
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue; const d = line.slice(6).trim();
+      try { const delta = JSON.parse(d)?.candidates?.[0]?.content?.parts?.[0]?.text || ''; if (delta) { full += delta; onChunk(full); } } catch {}
+    }
+  }
   return full;
 }
 
 async function callOllama(system, user, onChunk, numCtx) {
-  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/,'');
+  const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
   const model = document.getElementById('ollama-model').value.trim();
   const maxTok = parseInt(document.getElementById('max-tokens').value);
   const temp = parseFloat(document.getElementById('temperature').value);
-  const body = {model,stream:true,temperature:temp,max_tokens:maxTok,
-    messages:[{role:'system',content:system},{role:'user',content:user}]};
-  if(numCtx) body.options={num_ctx:numCtx};
-  const resp = await fetch(base+'/v1/chat/completions',{
-    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer ollama'},
-    body:JSON.stringify(body)
+  const body = { model, stream: true, temperature: temp, max_tokens: maxTok, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] };
+  if (numCtx) body.options = { num_ctx: numCtx };
+  const resp = await fetch(base + '/v1/chat/completions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ollama' },
+    body: JSON.stringify(body)
   });
-  if(!resp.ok) throw new Error('Ollama error '+resp.status+' — is Ollama running with CORS enabled?');
-  const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf='',full='';
-  while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});
-    const lines=buf.split('\n');buf=lines.pop();
-    for(const line of lines){if(!line.startsWith('data: '))continue;const d=line.slice(6).trim();if(d==='[DONE]')continue;
-      try{const delta=JSON.parse(d)?.choices?.[0]?.delta?.content||'';if(delta){full+=delta;onChunk(full);}}catch{}}}
+  if (!resp.ok) throw new Error('Ollama error ' + resp.status + ' — is Ollama running with CORS enabled?');
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue; const d = line.slice(6).trim(); if (d === '[DONE]') continue;
+      try { const delta = JSON.parse(d)?.choices?.[0]?.delta?.content || ''; if (delta) { full += delta; onChunk(full); } } catch {}
+    }
+  }
   return full;
 }
 
-// ─── Mode / UI ────────────────────────────────────────────────────
-function setMode(m) {
-  mode=m;
-  document.getElementById('btn-single').classList.toggle('active',m==='single');
-  document.getElementById('btn-batch').classList.toggle('active',m==='batch');
-  document.getElementById('single-panel').classList.toggle('hidden',m!=='single');
-  document.getElementById('batch-panel').classList.toggle('hidden',m!=='batch');
-  document.getElementById('run-label').textContent=m==='single'?'Generate documentation, tests & converted code':'Process queue';
-  document.getElementById('summary-panel').classList.remove('show');
-}
-function loadSample() { document.getElementById('code-input').value=SAMPLES[document.getElementById('src-lang').value]||SAMPLES.bash; }
-function onSrcChange() { const v=document.getElementById('code-input').value.trim(); if(!v||Object.values(SAMPLES).includes(v)) loadSample(); }
-function isLegacy(name) { return LEGACY_EXTS.includes(name.split('.').pop().toLowerCase()); }
-function switchTab(tab) {
-  ['docs','tests','converted'].forEach(t=>{
-    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
-    document.getElementById('panel-'+t).classList.toggle('hidden',t!==tab);
-  });
-}
-function setDot(tab,cls){ document.getElementById('ind-'+tab).innerHTML=cls?`<span class="tab-dot ${cls}"></span>`:''; }
-function showStatus(msg,spinning){
-  const r=document.getElementById('status-row');
-  r.innerHTML=msg?(spinning?`<div class="spinner"></div><span>${msg}</span>`:`<span>${msg}</span>`):'';
-}
-
-// Output: auto-scroll + clear button + Copy/Download
-function setOutput(tab, text, prose) {
-  const el=document.getElementById('out-'+tab);
-  const acts=document.getElementById('acts-'+tab);
-  el.className='out-box'+(prose?' prose':'');
-  if(!text){
-    el.innerHTML=`<span class="placeholder">${tab==='docs'?'Documentation':tab==='tests'?'Test script':'Converted code'} will appear here.</span>`;
-    acts.innerHTML=''; return;
-  }
-  el.textContent=text;
-  el.scrollTop=el.scrollHeight; // auto-scroll to bottom
-  acts.innerHTML='';
-  const cp=document.createElement('button'); cp.className='btn btn-sm'; cp.textContent='Copy';
-  cp.onclick=()=>{navigator.clipboard.writeText(text).then(()=>{cp.textContent='Copied!';setTimeout(()=>cp.textContent='Copy',1500);});};
-  acts.appendChild(cp);
-  if(text.length>100){
-    const dl=document.createElement('button'); dl.className='btn btn-sm'; dl.textContent='Download';
-    const exts={docs:'txt',tests:'sh',converted:TGT_EXT[document.getElementById('tgt-lang').value]||'txt'};
-    dl.onclick=()=>downloadText(text,'rosetta_'+tab+'.'+exts[tab]);
-    acts.appendChild(dl);
-  }
-  const clr=document.createElement('button'); clr.className='btn btn-sm'; clr.textContent='Clear';
-  clr.style.color='var(--text3)';
-  clr.onclick=()=>setOutput(tab,'',prose);
-  acts.appendChild(clr);
-}
-
-function downloadText(text,filename){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));
-  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
-}
-function showComplexity(score,label,level){
-  document.getElementById('complexity-wrap').style.display='';
-  document.getElementById('cb-score-label').textContent=label;
-  const fill=document.getElementById('cb-fill');
-  fill.style.width=score+'%';
-  fill.className='cb-fill '+({low:'fill-green',medium:'fill-amber',high:'fill-red'}[level]);
-}
-function showWarning(level,issues){
-  const el=document.getElementById('warn-banner');
-  if(!issues||!issues.length){el.className='warn-banner';return;}
-  el.className='warn-banner show '+(level==='high'?'warn-red':'warn-amber');
-  const title=level==='high'?'&#9888; Manual intervention required':'&#9888; Partial conversion — review recommended';
-  el.innerHTML=`<strong>${title}</strong>${issues.map(i=>`&bull; ${i}`).join('<br>')}`;
-}
-
-// ─── Queue / File I/O ─────────────────────────────────────────────
-function addToQueue(name,content){ if(queue.find(f=>f.name===name))return; queue.push({name,content,status:'pending'}); renderQueue(); }
-function removeFromQueue(i){ queue.splice(i,1); renderQueue(); }
-function clearQueue(){ queue=[]; renderQueue(); }
-function renderQueue(){
-  const list=document.getElementById('queue-list');
-  document.getElementById('queue-count').textContent=queue.length+' file'+(queue.length===1?'':'s');
-  if(!queue.length){list.innerHTML='<div class="queue-empty">No files added yet</div>';return;}
-  list.innerHTML='';
-  const stMap={pending:'st-pending',running:'st-running',done:'st-done',warn:'st-warn',error:'st-error'};
-  const stTxt={pending:'queued',running:'processing…',done:'done',warn:'needs review',error:'error'};
-  queue.forEach((f,i)=>{
-    const row=document.createElement('div'); row.className='queue-item';
-    row.innerHTML=`<span class="fname" title="${f.name}">${f.name}</span>`+
-      `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>`+
-      (f.status==='pending'?`<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>`:'');
-    list.appendChild(row);
-  });
-}
-async function pickDirectory(){
-  try{
-    const dh=await window.showDirectoryPicker({mode:'read'}); let c=0;
-    for await(const e of dh.values()) if(e.kind==='file'&&isLegacy(e.name)){const f=await e.getFile();addToQueue(f.name,await f.text());c++;}
-    if(!c) showStatus('No recognized legacy files found in that directory.',false);
-  }catch(e){if(e.name!=='AbortError')showStatus('Directory access failed: '+e.message,false);}
-}
-async function handleFilePicker(input){ for(const f of input.files)if(isLegacy(f.name))addToQueue(f.name,await f.text()); input.value=''; }
-async function handleDrop(e){
-  e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over');
-  for(const item of [...e.dataTransfer.items]){
-    if(item.kind!=='file')continue;
-    if(item.getAsFileSystemHandle){
-      const h=await item.getAsFileSystemHandle();
-      if(h.kind==='directory'){for await(const en of h.values())if(en.kind==='file'&&isLegacy(en.name)){const f=await en.getFile();addToQueue(f.name,await f.text());}}
-      else{const f=await h.getFile();if(isLegacy(f.name))addToQueue(f.name,await f.text());}
-    }else{const f=item.getAsFile();if(f&&isLegacy(f.name))addToQueue(f.name,await f.text());}
-  }
-}
-async function pickOutputDir(){
-  try{outputDirHandle=await window.showDirectoryPicker({mode:'readwrite'});document.getElementById('out-dir-name').textContent=outputDirHandle.name+'/';}
-  catch(e){if(e.name!=='AbortError')showStatus('Could not access output directory.',false);}
-}
-async function saveFile(base,suffix,content){
-  if(!outputDirHandle)return;
-  try{const fh=await outputDirHandle.getFileHandle(base+suffix,{create:true});const w=await fh.createWritable();await w.write(content);await w.close();}catch(e){console.warn('Save failed:',e);}
-}
-
-// ─── Core processing ──────────────────────────────────────────────
-const SYS='You are a senior software engineer. Be concise and direct. For documentation use plain text with labeled sections — no markdown headers or fences. For code output raw code only, no backtick fences, no preamble.';
-
-async function assessComplexity(code,srcLabel,tgtLabel){
-  const raw=await diagCallAI('Complexity assessment',
-    'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation.',
-    `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 is trivial, 100 is practically impossible. Issues = specific blockers (max 4). Empty array if none.\n\nScript:\n${code}`,
-    ()=>{}
-  );
-  try{return JSON.parse(raw.replace(/```json|```/g,'').trim());}
-  catch{return{score:40,level:'medium',label:'Unknown',issues:['Could not assess complexity automatically.'],manual_required:false};}
-}
-
-async function processOne(code,srcLabel,tgt,tgtLabel,baseName,numCtx){
-  const ext=TGT_EXT[tgt];
-  const testExt={python3:'py',go:'_test.go'}[tgt]||'sh';
-  let complexity={score:0,level:'low',label:'Clean',issues:[],manual_required:false};
-
-  // Token headroom check
-  const estTok = Math.ceil(code.length/4);
-  const maxTok = parseInt(document.getElementById('max-tokens').value);
-  const headroom = maxTok - estTok;
-  diagSet('tokens', headroom<200?'red':headroom<600?'amber':'green',
-    headroom<0?'exceeds limit':headroom<600?`~${headroom} tok left`:`~${estTok} tok input`);
-  diagSet('model','green', provider==='ollama'
-    ? document.getElementById('ollama-model').value
-    : (document.getElementById(provider+'-model')?.value||provider));
-  diagAddLog('INFO',`Run started · ${srcLabel} → ${tgtLabel} · ~${estTok} est. tokens`);
-
-  const skipAssess=document.getElementById('skip-complexity').value==='true';
-  if(!skipAssess){
-    showStatus('Analyzing complexity…',true);
-    complexity=await assessComplexity(code,srcLabel,tgtLabel);
-    showComplexity(complexity.score,`${complexity.label} (${complexity.score}/100)`,complexity.level);
-    showWarning(complexity.level,complexity.issues);
-  }else{
-    document.getElementById('complexity-wrap').style.display='none';
-    document.getElementById('warn-banner').className='warn-banner';
-  }
-
-  switchTab('docs'); setDot('docs','dot-run');
-  showStatus('Generating documentation…',true);
-  const docs=await diagCallAI('Documentation',SYS,
-    `Analyze this ${srcLabel} script and write developer documentation.\n\n1. PURPOSE — what it does\n2. INPUTS — args, env vars, files read\n3. OUTPUTS — what it produces or modifies\n4. LOGIC WALKTHROUGH — key steps\n5. KNOWN RISKS — fragility, assumptions, hardcoded values\n6. MIGRATION NOTES — specific challenges converting to ${tgtLabel}${complexity.issues.length?'\n\nKnown migration blockers:\n'+complexity.issues.join('\n'):''}`,
-    t=>setOutput('docs',t,true));
-  setDot('docs',complexity.level==='high'?'dot-warn':'dot-done');
-  if(baseName) await saveFile(baseName,'_docs.txt',docs);
-
-  switchTab('tests'); setDot('tests','dot-run');
-  showStatus('Generating test script…',true);
-  const testLang=['python3','go'].includes(tgt)?tgt:'bash';
-  const tests=await diagCallAI('Test generation',SYS,
-    `Write a ${testLang==='python3'?'pytest':testLang==='go'?'Go test':'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw code. Include tests for each behavior, edge cases, and clear test names.\n\nOriginal:\n${code}`,
-    t=>setOutput('tests',t,false));
-  setDot('tests','dot-done');
-  if(baseName) await saveFile(baseName,'_test.'+testExt,tests);
-
-  switchTab('converted'); setDot('converted','dot-run');
-  showStatus('Converting to '+tgtLabel+'…',true);
-  const manualNote=complexity.manual_required?'\nIMPORTANT: Insert clear # TODO: MANUAL REVIEW comments where human intervention is required.':'';
-  const converted=await diagCallAI('Conversion',SYS,
-    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY raw ${tgtLabel} code, no fences.`+
-    (tgt==='ansible'?'\nUse official Ansible modules (not shell/command). Every task needs a descriptive name. Use variables for hardcoded values.':'')+
-    (tgt==='python3'?'\nUse argparse for CLI args. Use subprocess.run() for shell commands.':'')+
-    (srcLabel.toLowerCase().includes('rexx')?'\nNote: ADDRESS COMMAND/TSO/CMS/CP calls are z/VM host environment commands. Map to subprocess calls or ansible.builtin.shell. EXECIO maps to file I/O. SAY maps to print()/debug.':'')+
-    manualNote+`\n\nScript:\n${code}`,
-    t=>setOutput('converted',t,false),numCtx);
-  setDot('converted',complexity.manual_required?'dot-warn':'dot-done');
-  if(baseName) await saveFile(baseName,'.'+ext,converted);
-
-  return{docs,tests,converted,complexity};
-}
-
-// ─── Run ──────────────────────────────────────────────────────────
-async function runAll(){
-  const src=document.getElementById('src-lang').value;
-  const srcLabel=document.getElementById('src-lang').options[document.getElementById('src-lang').selectedIndex].text;
-  const tgt=document.getElementById('tgt-lang').value;
-  const tgtLabel=TGT_LABELS[tgt];
-  const btn=document.getElementById('run-btn');
-  btn.disabled=true;
-  ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
-  document.getElementById('complexity-wrap').style.display='none';
-  document.getElementById('warn-banner').className='warn-banner';
-  document.getElementById('ctx-banner').className='ctx-banner';
-  document.getElementById('summary-panel').classList.remove('show');
-  batchResults=[];
-  savePrefs();
-
-  try{
-    if(mode==='single'){
-      const code=document.getElementById('code-input').value.trim();
-      if(!code){alert('Paste some legacy code first.');btn.disabled=false;return;}
-
-      // Ollama context check
-      const ctxCheck=await checkOllamaContext(code);
-      if(!ctxCheck.ok){showStatus('Blocked — switch to a cloud provider for this script.',false);btn.disabled=false;return;}
-
-      const result=await processOne(code,srcLabel,tgt,tgtLabel,null,ctxCheck.numCtx);
-      showStatus(result.complexity.manual_required?'Done — manual review required (see warnings above).':'Done.',false);
-      switchTab('docs');
-    }else{
-      if(!queue.length){alert('No files in queue.');btn.disabled=false;return;}
-      const delay=parseInt(document.getElementById('batch-delay').value);
-      for(let i=0;i<queue.length;i++){
-        const f=queue[i];
-        queue[i].status='running'; renderQueue();
-        showStatus(`Processing ${i+1} of ${queue.length}: ${f.name}`,true);
-        ['docs','tests','converted'].forEach(t=>{setOutput(t,'',false);setDot(t,'');});
-        document.getElementById('complexity-wrap').style.display='none';
-        document.getElementById('warn-banner').className='warn-banner';
-        const ctxCheck=await checkOllamaContext(f.content);
-        if(!ctxCheck.ok){queue[i].status='error';batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Too large',issues:['Script too large for Ollama — switch to a cloud provider'],manual_required:true}});renderQueue();continue;}
-        try{
-          const base=f.name.replace(/\.[^.]+$/,'');
-          const result=await processOne(f.content,srcLabel,tgt,tgtLabel,base,ctxCheck.numCtx);
-          queue[i].status=result.complexity.level==='high'?'warn':'done';
-          batchResults.push({name:f.name,...result});
-        }catch(e){queue[i].status='error';batchResults.push({name:f.name,complexity:{score:0,level:'high',label:'Error',issues:[e.message],manual_required:true}});}
-        renderQueue();
-        if(delay&&i<queue.length-1) await new Promise(r=>setTimeout(r,delay));
-      }
-      showStatus('Batch complete.',false);
-      switchTab('docs');
-      renderSummary(batchResults);
-    }
-  }catch(e){
-    showStatus('Error: '+e.message,false);
-  }finally{
-    btn.disabled=false;
-  }
-}
-
-// ─── Summary ──────────────────────────────────────────────────────
-function renderSummary(results){
-  document.getElementById('summary-panel').classList.add('show');
-  const total=results.length;
-  const clean=results.filter(r=>r.complexity?.level==='low').length;
-  const partial=results.filter(r=>r.complexity?.level==='medium').length;
-  const manual=results.filter(r=>r.complexity?.level==='high').length;
-  document.getElementById('stat-grid').innerHTML=
-    `<div class="stat-card"><div class="stat-val">${total}</div><div class="stat-lbl">Files processed</div></div>`+
-    `<div class="stat-card"><div class="stat-val" style="color:#1D9E75;">${clean}</div><div class="stat-lbl">Clean</div></div>`+
-    `<div class="stat-card"><div class="stat-val" style="color:#BA7517;">${partial}</div><div class="stat-lbl">Needs review</div></div>`+
-    `<div class="stat-card"><div class="stat-val" style="color:#E24B4A;">${manual}</div><div class="stat-lbl">Manual required</div></div>`;
-  const tbody=document.getElementById('summary-tbody'); tbody.innerHTML='';
-  results.forEach(r=>{
-    const c=r.complexity||{};
-    const pillClass={low:'risk-clean',medium:'risk-partial',high:'risk-manual'}[c.level]||'risk-manual';
-    const pillText={low:'Clean',medium:'Partial',high:'Manual'}[c.level]||'Error';
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td><code style="font-family:var(--mono);font-size:12px;">${r.name}</code></td>`+
-      `<td><span class="risk-pill ${pillClass}">${pillText}</span><div class="note-cell" style="margin-top:3px;">${c.score||0}/100</div></td>`+
-      `<td>${c.manual_required?'Partial + TODOs':'Automated'}</td>`+
-      `<td class="note-cell">${(c.issues?.length)?c.issues.join('; '):'—'}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function exportSummaryCSV(){
-  const rows=[['File','Level','Score','Conversion','Issues']];
-  batchResults.forEach(r=>{const c=r.complexity||{};rows.push([r.name,c.level||'',c.score||0,c.manual_required?'Partial+TODOs':'Automated',(c.issues||[]).join(' | ')]);});
-  downloadText(rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),'rosetta_summary.csv');
-}
-
-// ─── Diagnostics ──────────────────────────────────────────────────
-const DIAG_SIGNALS = [
-  { id:'api',      name:'API / server reachable'  },
-  { id:'auth',     name:'Auth / key accepted'      },
-  { id:'model',    name:'Model confirmed'          },
-  { id:'speed',    name:'Response time'            },
-  { id:'stream',   name:'Stream health'            },
-  { id:'tokens',   name:'Token headroom'           },
-  { id:'complete', name:'Last response complete'   },
-  { id:'output',   name:'Output validity'          },
-  { id:'errors',   name:'Error count'              },
-  { id:'rate',     name:'Rate limit'               },
-];
-
-let diagState = {};
-let diagLog = [];
-let diagStats = { requests:0, errors:0, totalMs:0 };
-let diagHasData = false;
-
-DIAG_SIGNALS.forEach(s => { diagState[s.id] = { color:'grey', val:'—' }; });
-
-function toggleDiag() {
-  const panel = document.getElementById('diag-panel');
-  const isOpen = panel.classList.toggle('open');
-  if(isOpen) diagRunAutoDetect();
-}
-
-function switchDTab(id) {
-  ['health','detect','log'].forEach(t => {
-    document.getElementById('dtab-'+t).classList.toggle('active', t===id);
-    document.getElementById('dpanel-'+t).classList.toggle('active', t===id);
-  });
-}
-
-function diagSet(id, color, val) {
-  diagState[id] = { color, val };
-  if(diagHasData) diagRefreshBoard();
-}
-
-function diagRefreshBoard() {
-  document.getElementById('diag-placeholder').classList.add('hidden');
-  document.getElementById('diag-board').classList.remove('hidden');
-  const colors = Object.values(diagState).map(s => s.color);
-  const hasRed = colors.includes('red');
-  const hasAmber = colors.includes('amber');
-  const banner = document.getElementById('hb-banner');
-  banner.className = 'health-banner ' + (hasRed ? 'hb-error' : hasAmber ? 'hb-warn' : 'hb-ok');
-  document.getElementById('hb-msg').textContent = hasRed ? 'Issue detected — check red signals below' : hasAmber ? 'Warning — review amber signals below' : 'All signals green';
-  const avg = diagStats.requests > 0 ? (diagStats.totalMs / diagStats.requests / 1000).toFixed(1) : '—';
-  document.getElementById('hb-detail').textContent = `${diagStats.requests} request${diagStats.requests!==1?'s':''} · ${diagStats.errors} error${diagStats.errors!==1?'s':''} · avg ${avg}s`;
-  const board = document.getElementById('signal-board');
-  board.innerHTML = '';
-  DIAG_SIGNALS.forEach(sig => {
-    const s = diagState[sig.id] || { color:'grey', val:'—' };
-    const row = document.createElement('div');
-    row.className = `sig-row state-${s.color}`;
-    row.innerHTML = `<div class="sdot ${s.color}"></div><span class="sig-name">${sig.name}</span><span class="sig-val ${s.color==='green'?'':s.color}">${s.val}</span>`;
-    board.appendChild(row);
-  });
-}
-
-function diagAddLog(level, msg, durationMs) {
-  const ts = new Date().toTimeString().slice(0,8);
-  diagLog.push({ ts, level, msg, dur: durationMs||null });
-  const wrap = document.getElementById('diag-log-wrap');
-  if(!wrap) return;
-  const row = document.createElement('div');
-  row.className = 'dlog-row';
-  const lvlCls = level==='OK'?'ll-ok':level==='ERR'?'ll-err':level==='WARN'?'ll-warn':'ll-info';
-  row.innerHTML = `<div class="dlog-ts">${ts}</div><div class="dlog-lv ${lvlCls}">${level}</div><div class="dlog-msg">${msg}</div><div class="dlog-dur">${durationMs?durationMs+'ms':'—'}</div>`;
-  wrap.appendChild(row);
-  wrap.scrollTop = wrap.scrollHeight;
-  document.getElementById('diag-log-count').textContent = diagLog.length;
-}
-
-function diagExportLog() {
-  const lines = diagLog.map(e=>`[${e.ts}] [${e.level}] ${e.msg}${e.dur?' ('+e.dur+'ms)':''}`);
-  downloadText(lines.join('\n'), 'rosetta-diag-log.txt');
-}
-
-// ── Called from processOne before each AI call ──
-async function diagCallAI(label, system, user, onChunk, numCtx) {
+// ─── callAI — diagnostic wrapper (no recursion) ───────────────────
+async function callAI(system, user, onChunk) {
   const t0 = Date.now();
-  diagAddLog('INFO', label+' started');
   try {
-    // Call the provider functions directly — no wrapping callAI to avoid recursion
-    let result;
-    switch(provider) {
-      case 'anthropic': result = await callAnthropic(system, user, onChunk); break;
-      case 'openai':    result = await callOpenAI(system, user, onChunk); break;
-      case 'gemini':    result = await callGemini(system, user, onChunk); break;
-      case 'ollama':    result = await callOllama(system, user, onChunk, numCtx); break;
-      default: throw new Error('Unknown provider: '+provider);
-    }
+    const result = await baseCallAI(system, user, onChunk);
     const ms = Date.now() - t0;
-    diagStats.requests++;
-    diagStats.totalMs += ms;
+    diagSessionStats.requests++;
+    diagSessionStats.totalMs += ms;
+    diagSessionStats.lastMs = ms;
     const slow = ms > 8000;
     const empty = !result || result.trim().length === 0;
     diagSet('api',     'green', 'responding');
@@ -1245,125 +1085,527 @@ async function diagCallAI(label, system, user, onChunk, numCtx) {
     diagSet('stream',  'green', 'completed cleanly');
     diagSet('output',  empty ? 'amber' : 'green', empty ? 'empty response' : 'valid');
     diagSet('complete','green', 'ended normally');
-    diagSet('errors',  diagStats.errors===0?'green':diagStats.errors<3?'amber':'red', `${diagStats.errors} error${diagStats.errors!==1?'s':''}`);
+    diagSet('errors',  diagSessionStats.errors === 0 ? 'green' : diagSessionStats.errors < 3 ? 'amber' : 'red', `${diagSessionStats.errors} error${diagSessionStats.errors !== 1 ? 's' : ''}`);
     diagSet('rate',    'green', 'no 429s');
-    diagHasData = true;
+    diagFirstRun = true;
     diagRefreshBoard();
-    diagAddLog('OK', `${label} complete · ${(ms/1000).toFixed(1)}s · ~${Math.ceil((result||'').length/4)} tokens`, ms);
+    diagAddLog('OK', `${provider} · ${(ms/1000).toFixed(1)}s · ~${Math.ceil((result||'').length/4)} tokens`, ms);
     return result;
-  } catch(e) {
+  } catch (e) {
     const ms = Date.now() - t0;
-    diagStats.errors++;
+    diagSessionStats.errors++;
     const is401 = e.message.includes('401') || e.message.toLowerCase().includes('unauthorized') || e.message.toLowerCase().includes('api key');
     const isNetwork = e.message.toLowerCase().includes('network') || e.message.toLowerCase().includes('fetch') || e.message.toLowerCase().includes('unreachable');
     const is429 = e.message.includes('429') || e.message.toLowerCase().includes('rate');
-    diagSet('api',    isNetwork ? 'red' : 'green', isNetwork ? 'unreachable' : 'reached');
-    diagSet('auth',   is401 ? 'red' : 'grey', is401 ? '401 Unauthorized' : '—');
-    diagSet('speed',  'red', 'failed');
-    diagSet('stream', 'red', 'error');
-    diagSet('output', 'red', 'no response');
-    diagSet('complete','red','did not complete');
-    diagSet('errors', diagStats.errors<3?'amber':'red', `${diagStats.errors} error${diagStats.errors!==1?'s':''}`);
-    diagSet('rate',   is429?'red':'green', is429?'rate limited':'ok');
-    diagHasData = true;
+    diagSet('api',     isNetwork ? 'red' : 'green', isNetwork ? 'unreachable' : 'reached');
+    diagSet('auth',    is401 ? 'red' : 'grey', is401 ? '401 Unauthorized' : '—');
+    diagSet('speed',   'red', 'failed');
+    diagSet('stream',  'red', 'error');
+    diagSet('output',  'red', 'no response');
+    diagSet('complete','red', 'did not complete');
+    diagSet('errors',  diagSessionStats.errors < 3 ? 'amber' : 'red', `${diagSessionStats.errors} error${diagSessionStats.errors !== 1 ? 's' : ''}`);
+    diagSet('rate',    is429 ? 'red' : 'green', is429 ? 'rate limited' : 'ok');
+    diagFirstRun = true;
     diagRefreshBoard();
-    diagAddLog('ERR', `${label} failed: ${e.message}`, ms);
+    diagAddLog('ERR', `${provider} error: ${e.message}`, ms);
     throw e;
   }
 }
 
-// ── Auto-detect all providers ──
+// ─── Mode / UI ────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-single').classList.toggle('active', m === 'single');
+  document.getElementById('btn-batch').classList.toggle('active', m === 'batch');
+  document.getElementById('single-panel').classList.toggle('hidden', m !== 'single');
+  document.getElementById('batch-panel').classList.toggle('hidden', m !== 'batch');
+  document.getElementById('run-label').textContent = m === 'single' ? 'Generate documentation, tests & converted code' : 'Process queue';
+  document.getElementById('summary-panel').classList.remove('show');
+}
+function loadSample() { document.getElementById('code-input').value = SAMPLES[document.getElementById('src-lang').value] || SAMPLES.bash; }
+function onSrcChange() { const v = document.getElementById('code-input').value.trim(); if (!v || Object.values(SAMPLES).includes(v)) loadSample(); }
+function isLegacy(name) { return LEGACY_EXTS.includes(name.split('.').pop().toLowerCase()); }
+function switchTab(tab) {
+  ['docs', 'tests', 'converted'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
+  });
+}
+function setDot(tab, cls) { document.getElementById('ind-' + tab).innerHTML = cls ? `<span class="tab-dot ${cls}"></span>` : ''; }
+function showStatus(msg, spinning) {
+  const r = document.getElementById('status-row');
+  r.innerHTML = msg ? (spinning ? `<div class="spinner"></div><span>${msg}</span>` : `<span>${msg}</span>`) : '';
+}
+
+function setOutput(tab, text, prose) {
+  const el = document.getElementById('out-' + tab);
+  const acts = document.getElementById('acts-' + tab);
+  el.className = 'out-box' + (prose ? ' prose' : '');
+  if (!text) {
+    el.innerHTML = `<span class="placeholder">${tab === 'docs' ? 'Documentation' : tab === 'tests' ? 'Test script' : 'Converted code'} will appear here.</span>`;
+    acts.innerHTML = ''; return;
+  }
+  el.textContent = text;
+  el.scrollTop = el.scrollHeight;
+  acts.innerHTML = '';
+  const cp = document.createElement('button'); cp.className = 'btn btn-sm'; cp.textContent = 'Copy';
+  cp.onclick = () => { navigator.clipboard.writeText(text).then(() => { cp.textContent = 'Copied!'; setTimeout(() => cp.textContent = 'Copy', 1500); }); };
+  acts.appendChild(cp);
+  if (text.length > 100) {
+    const dl = document.createElement('button'); dl.className = 'btn btn-sm'; dl.textContent = 'Download';
+    const exts = { docs: 'txt', tests: 'sh', converted: TGT_EXT[document.getElementById('tgt-lang').value] || 'txt' };
+    dl.onclick = () => downloadText(text, 'rosetta_' + tab + '.' + exts[tab]);
+    acts.appendChild(dl);
+  }
+  const clr = document.createElement('button'); clr.className = 'btn btn-sm'; clr.textContent = 'Clear';
+  clr.style.color = 'var(--text3)';
+  clr.onclick = () => setOutput(tab, '', prose);
+  acts.appendChild(clr);
+}
+
+function downloadText(text, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+function showComplexity(score, label, level) {
+  document.getElementById('complexity-wrap').style.display = '';
+  document.getElementById('cb-score-label').textContent = label;
+  const fill = document.getElementById('cb-fill');
+  fill.style.width = score + '%';
+  fill.className = 'cb-fill ' + ({ low: 'fill-green', medium: 'fill-amber', high: 'fill-red' }[level]);
+}
+function showWarning(level, issues) {
+  const el = document.getElementById('warn-banner');
+  if (!issues || !issues.length) { el.className = 'warn-banner'; return; }
+  el.className = 'warn-banner show ' + (level === 'high' ? 'warn-red' : 'warn-amber');
+  const title = level === 'high' ? '&#9888; Manual intervention required' : '&#9888; Partial conversion — review recommended';
+  el.innerHTML = `<strong>${title}</strong>${issues.map(i => `&bull; ${i}`).join('<br>')}`;
+}
+
+// ─── Queue / File I/O ─────────────────────────────────────────────
+function addToQueue(name, content) { if (queue.find(f => f.name === name)) return; queue.push({ name, content, status: 'pending' }); renderQueue(); }
+function removeFromQueue(i) { queue.splice(i, 1); renderQueue(); }
+function clearQueue() { queue = []; renderQueue(); }
+function renderQueue() {
+  const list = document.getElementById('queue-list');
+  document.getElementById('queue-count').textContent = queue.length + ' file' + (queue.length === 1 ? '' : 's');
+  if (!queue.length) { list.innerHTML = '<div class="queue-empty">No files added yet</div>'; return; }
+  list.innerHTML = '';
+  const stMap = { pending: 'st-pending', running: 'st-running', done: 'st-done', warn: 'st-warn', error: 'st-error' };
+  const stTxt = { pending: 'queued', running: 'processing…', done: 'done', warn: 'needs review', error: 'error' };
+  queue.forEach((f, i) => {
+    const row = document.createElement('div'); row.className = 'queue-item';
+    row.innerHTML = `<span class="fname" title="${f.name}">${f.name}</span>` +
+      `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>` +
+      (f.status === 'pending' ? `<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>` : '');
+    list.appendChild(row);
+  });
+}
+async function pickDirectory() {
+  try {
+    const dh = await window.showDirectoryPicker({ mode: 'read' }); let c = 0;
+    for await (const e of dh.values()) if (e.kind === 'file' && isLegacy(e.name)) { const f = await e.getFile(); addToQueue(f.name, await f.text()); c++; }
+    if (!c) showStatus('No recognized legacy files found in that directory.', false);
+  } catch (e) { if (e.name !== 'AbortError') showStatus('Directory access failed: ' + e.message, false); }
+}
+async function handleFilePicker(input) { for (const f of input.files) if (isLegacy(f.name)) addToQueue(f.name, await f.text()); input.value = ''; }
+async function handleDrop(e) {
+  e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over');
+  for (const item of [...e.dataTransfer.items]) {
+    if (item.kind !== 'file') continue;
+    if (item.getAsFileSystemHandle) {
+      const h = await item.getAsFileSystemHandle();
+      if (h.kind === 'directory') { for await (const en of h.values()) if (en.kind === 'file' && isLegacy(en.name)) { const f = await en.getFile(); addToQueue(f.name, await f.text()); } }
+      else { const f = await h.getFile(); if (isLegacy(f.name)) addToQueue(f.name, await f.text()); }
+    } else { const f = item.getAsFile(); if (f && isLegacy(f.name)) addToQueue(f.name, await f.text()); }
+  }
+}
+async function pickOutputDir() {
+  try { outputDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' }); document.getElementById('out-dir-name').textContent = outputDirHandle.name + '/'; }
+  catch (e) { if (e.name !== 'AbortError') showStatus('Could not access output directory.', false); }
+}
+async function saveFile(base, suffix, content) {
+  if (!outputDirHandle) return;
+  try { const fh = await outputDirHandle.getFileHandle(base + suffix, { create: true }); const w = await fh.createWritable(); await w.write(content); await w.close(); } catch (e) { console.warn('Save failed:', e); }
+}
+
+// ─── Core processing ──────────────────────────────────────────────
+const SYS = 'You are a senior software engineer. Be concise and direct. For documentation use plain text with labeled sections — no markdown headers or fences. For code output raw code only, no backtick fences, no preamble.';
+
+async function assessComplexity(code, srcLabel, tgtLabel) {
+  const raw = await callAI(
+    'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation.',
+    `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 is trivial, 100 is practically impossible. Issues = specific blockers (max 4). Empty array if none.\n\nScript:\n${code}`,
+    () => {}
+  );
+  try { return JSON.parse(raw.replace(/```json|```/g, '').trim()); }
+  catch { return { score: 40, level: 'medium', label: 'Unknown', issues: ['Could not assess complexity automatically.'], manual_required: false }; }
+}
+
+async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
+  const ext = TGT_EXT[tgt];
+  const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
+  let complexity = { score: 0, level: 'low', label: 'Clean', issues: [], manual_required: false };
+
+  const estTokens = Math.ceil(code.length / 4);
+  const maxTok = parseInt(document.getElementById('max-tokens').value);
+  const headroom = maxTok - estTokens;
+  diagSet('tokens', headroom < 200 ? 'red' : headroom < 600 ? 'amber' : 'green',
+    headroom < 0 ? 'exceeds limit' : headroom < 600 ? `~${headroom} tok left` : `~${estTokens} tok input`);
+  diagSet('model', 'green', provider === 'ollama'
+    ? document.getElementById('ollama-model').value
+    : (document.getElementById(provider + '-model')?.value || provider));
+  diagAddLog('INFO', `Run started · ${srcLabel} → ${tgtLabel} · ~${estTokens} est. tokens`);
+
+  const skipAssess = document.getElementById('skip-complexity').value === 'true';
+  if (!skipAssess) {
+    showStatus('Analyzing complexity…', true);
+    complexity = await assessComplexity(code, srcLabel, tgtLabel);
+    showComplexity(complexity.score, `${complexity.label} (${complexity.score}/100)`, complexity.level);
+    showWarning(complexity.level, complexity.issues);
+  } else {
+    document.getElementById('complexity-wrap').style.display = 'none';
+    document.getElementById('warn-banner').className = 'warn-banner';
+  }
+
+  switchTab('docs'); setDot('docs', 'dot-run');
+  showStatus('Generating documentation…', true);
+  const docs = await callAI(SYS,
+    `Analyze this ${srcLabel} script and write developer documentation.\n\n1. PURPOSE — what it does\n2. INPUTS — args, env vars, files read\n3. OUTPUTS — what it produces or modifies\n4. LOGIC WALKTHROUGH — key steps\n5. KNOWN RISKS — fragility, assumptions, hardcoded values\n6. MIGRATION NOTES — specific challenges converting to ${tgtLabel}${complexity.issues.length ? '\n\nKnown migration blockers:\n' + complexity.issues.join('\n') : ''}`,
+    t => setOutput('docs', t, true));
+  setDot('docs', complexity.level === 'high' ? 'dot-warn' : 'dot-done');
+  if (baseName) await saveFile(baseName, '_docs.txt', docs);
+
+  switchTab('tests'); setDot('tests', 'dot-run');
+  showStatus('Generating test script…', true);
+  const testLang = ['python3', 'go'].includes(tgt) ? tgt : 'bash';
+  const tests = await callAI(SYS,
+    `Write a ${testLang === 'python3' ? 'pytest' : testLang === 'go' ? 'Go test' : 'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw code. Include tests for each behavior, edge cases, and clear test names.\n\nOriginal:\n${code}`,
+    t => setOutput('tests', t, false));
+  setDot('tests', 'dot-done');
+  if (baseName) await saveFile(baseName, '_test.' + testExt, tests);
+
+  switchTab('converted'); setDot('converted', 'dot-run');
+  showStatus('Converting to ' + tgtLabel + '…', true);
+  const manualNote = complexity.manual_required ? '\nIMPORTANT: Insert clear # TODO: MANUAL REVIEW comments where human intervention is required.' : '';
+  const converted = await callAI(SYS,
+    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY raw ${tgtLabel} code, no fences.` +
+    (tgt === 'ansible' ? '\nUse official Ansible modules (not shell/command). Every task needs a descriptive name. Use variables for hardcoded values.' : '') +
+    (tgt === 'python3' ? '\nUse argparse for CLI args. Use subprocess.run() for shell commands.' : '') +
+    (srcLabel.toLowerCase().includes('rexx') ? '\nNote: ADDRESS COMMAND/TSO/CMS/CP calls are z/VM host environment commands. Map to subprocess calls or ansible.builtin.shell. EXECIO maps to file I/O. SAY maps to print()/debug.' : '') +
+    manualNote + `\n\nScript:\n${code}`,
+    t => setOutput('converted', t, false), numCtx);
+  setDot('converted', complexity.manual_required ? 'dot-warn' : 'dot-done');
+  if (baseName) await saveFile(baseName, '.' + ext, converted);
+
+  return { docs, tests, converted, complexity };
+}
+
+// ─── Run ──────────────────────────────────────────────────────────
+async function runAll() {
+  const src = document.getElementById('src-lang').value;
+  const srcLabel = document.getElementById('src-lang').options[document.getElementById('src-lang').selectedIndex].text;
+  const tgt = document.getElementById('tgt-lang').value;
+  const tgtLabel = TGT_LABELS[tgt];
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  ['docs', 'tests', 'converted'].forEach(t => { setOutput(t, '', false); setDot(t, ''); });
+  document.getElementById('complexity-wrap').style.display = 'none';
+  document.getElementById('warn-banner').className = 'warn-banner';
+  document.getElementById('ctx-banner').className = 'ctx-banner';
+  document.getElementById('summary-panel').classList.remove('show');
+  batchResults = [];
+  savePrefs();
+
+  try {
+    if (mode === 'single') {
+      const code = document.getElementById('code-input').value.trim();
+      if (!code) { alert('Paste some legacy code first.'); btn.disabled = false; return; }
+      const ctxCheck = await checkOllamaContext(code);
+      if (!ctxCheck.ok) { showStatus('Blocked — switch to a cloud provider for this script.', false); btn.disabled = false; return; }
+      const result = await processOne(code, srcLabel, tgt, tgtLabel, null, ctxCheck.numCtx);
+      showStatus(result.complexity.manual_required ? 'Done — manual review required (see warnings above).' : 'Done.', false);
+      switchTab('docs');
+    } else {
+      if (!queue.length) { alert('No files in queue.'); btn.disabled = false; return; }
+      const delay = parseInt(document.getElementById('batch-delay').value);
+      for (let i = 0; i < queue.length; i++) {
+        const f = queue[i];
+        queue[i].status = 'running'; renderQueue();
+        showStatus(`Processing ${i + 1} of ${queue.length}: ${f.name}`, true);
+        ['docs', 'tests', 'converted'].forEach(t => { setOutput(t, '', false); setDot(t, ''); });
+        document.getElementById('complexity-wrap').style.display = 'none';
+        document.getElementById('warn-banner').className = 'warn-banner';
+        const ctxCheck = await checkOllamaContext(f.content);
+        if (!ctxCheck.ok) { queue[i].status = 'error'; batchResults.push({ name: f.name, complexity: { score: 0, level: 'high', label: 'Too large', issues: ['Script too large for Ollama — switch to a cloud provider'], manual_required: true } }); renderQueue(); continue; }
+        try {
+          const base = f.name.replace(/\.[^.]+$/, '');
+          const result = await processOne(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx);
+          queue[i].status = result.complexity.level === 'high' ? 'warn' : 'done';
+          batchResults.push({ name: f.name, ...result });
+        } catch (e) { queue[i].status = 'error'; batchResults.push({ name: f.name, complexity: { score: 0, level: 'high', label: 'Error', issues: [e.message], manual_required: true } }); }
+        renderQueue();
+        if (delay && i < queue.length - 1) await new Promise(r => setTimeout(r, delay));
+      }
+      showStatus('Batch complete.', false);
+      switchTab('docs');
+      renderSummary(batchResults);
+    }
+  } catch (e) {
+    showStatus('Error: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    diagRunAutoDetect();
+  }
+}
+
+// ─── Summary ──────────────────────────────────────────────────────
+function renderSummary(results) {
+  document.getElementById('summary-panel').classList.add('show');
+  const total = results.length;
+  const clean = results.filter(r => r.complexity?.level === 'low').length;
+  const partial = results.filter(r => r.complexity?.level === 'medium').length;
+  const manual = results.filter(r => r.complexity?.level === 'high').length;
+  document.getElementById('stat-grid').innerHTML =
+    `<div class="stat-card"><div class="stat-val">${total}</div><div class="stat-lbl">Files processed</div></div>` +
+    `<div class="stat-card"><div class="stat-val" style="color:#1D9E75;">${clean}</div><div class="stat-lbl">Clean</div></div>` +
+    `<div class="stat-card"><div class="stat-val" style="color:#BA7517;">${partial}</div><div class="stat-lbl">Needs review</div></div>` +
+    `<div class="stat-card"><div class="stat-val" style="color:#E24B4A;">${manual}</div><div class="stat-lbl">Manual required</div></div>`;
+  const tbody = document.getElementById('summary-tbody'); tbody.innerHTML = '';
+  results.forEach(r => {
+    const c = r.complexity || {};
+    const pillClass = { low: 'risk-clean', medium: 'risk-partial', high: 'risk-manual' }[c.level] || 'risk-manual';
+    const pillText = { low: 'Clean', medium: 'Partial', high: 'Manual' }[c.level] || 'Error';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><code style="font-family:var(--mono);font-size:12px;">${r.name}</code></td>` +
+      `<td><span class="risk-pill ${pillClass}">${pillText}</span><div class="note-cell" style="margin-top:3px;">${c.score || 0}/100</div></td>` +
+      `<td>${c.manual_required ? 'Partial + TODOs' : 'Automated'}</td>` +
+      `<td class="note-cell">${(c.issues?.length) ? c.issues.join('; ') : '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportSummaryCSV() {
+  const rows = [['File', 'Level', 'Score', 'Conversion', 'Issues']];
+  batchResults.forEach(r => { const c = r.complexity || {}; rows.push([r.name, c.level || '', c.score || 0, c.manual_required ? 'Partial+TODOs' : 'Automated', (c.issues || []).join(' | ')]); });
+  downloadText(rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n'), 'rosetta_summary.csv');
+}
+
+// ─── Diagnostics ──────────────────────────────────────────────────
+const DIAG_SIGNALS = [
+  { id: 'api',      name: 'API / server reachable' },
+  { id: 'auth',     name: 'Auth / key accepted' },
+  { id: 'model',    name: 'Model confirmed' },
+  { id: 'speed',    name: 'Response time' },
+  { id: 'stream',   name: 'Stream health' },
+  { id: 'tokens',   name: 'Token headroom' },
+  { id: 'complete', name: 'Last response complete' },
+  { id: 'output',   name: 'Output validity' },
+  { id: 'errors',   name: 'Error count' },
+  { id: 'rate',     name: 'Rate limit' },
+];
+
+let diagState = {};
+let diagLog = [];
+let diagSessionStats = { requests: 0, errors: 0, totalMs: 0, lastMs: 0 };
+let diagFirstRun = false;
+
+DIAG_SIGNALS.forEach(s => { diagState[s.id] = { color: 'grey', val: '—' }; });
+
+function toggleDiag() {
+  const panel = document.getElementById('diag-panel');
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen) { diagRunAutoDetect(); diagRefreshBoard(); }
+}
+
+function switchDTab(id) {
+  ['health', 'detect', 'log'].forEach(t => {
+    document.getElementById('dtab-' + t).classList.toggle('active', t === id);
+    document.getElementById('dpanel-' + t).classList.toggle('active', t === id);
+  });
+}
+
+function diagSet(id, color, val) {
+  diagState[id] = { color, val };
+  if (diagFirstRun) diagRefreshBoard();
+}
+
+function diagRefreshBoard() {
+  if (!diagFirstRun) return;
+  document.getElementById('diag-placeholder').classList.add('hidden');
+  document.getElementById('diag-board').classList.remove('hidden');
+  const colors = Object.values(diagState).map(s => s.color);
+  const hasRed = colors.includes('red');
+  const hasAmber = colors.includes('amber');
+  const banner = document.getElementById('hb-banner');
+  banner.className = 'health-banner ' + (hasRed ? 'hb-error' : hasAmber ? 'hb-warn' : 'hb-ok');
+  document.getElementById('hb-msg').textContent = hasRed ? 'Issue detected — check red signals below' : hasAmber ? 'Warning — review amber signals below' : 'All signals green';
+  const avg = diagSessionStats.requests > 0 ? (diagSessionStats.totalMs / diagSessionStats.requests / 1000).toFixed(1) : '—';
+  document.getElementById('hb-detail').textContent = `${diagSessionStats.requests} request${diagSessionStats.requests !== 1 ? 's' : ''} · ${diagSessionStats.errors} error${diagSessionStats.errors !== 1 ? 's' : ''} · avg ${avg}s`;
+  const board = document.getElementById('signal-board');
+  board.innerHTML = '';
+  DIAG_SIGNALS.forEach(sig => {
+    const s = diagState[sig.id] || { color: 'grey', val: '—' };
+    const row = document.createElement('div');
+    row.className = `sig-row state-${s.color}`;
+    row.innerHTML = `<div class="sdot ${s.color}"></div><span class="sig-name">${sig.name}</span><span class="sig-val ${s.color === 'green' ? '' : s.color}">${s.val}</span>`;
+    board.appendChild(row);
+  });
+}
+
+function diagAddLog(level, msg, durationMs) {
+  const ts = new Date().toTimeString().slice(0, 8);
+  diagLog.push({ ts, level, msg, dur: durationMs || null });
+  const wrap = document.getElementById('diag-log-wrap');
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'dlog-row';
+  const lvlCls = level === 'OK' ? 'll-ok' : level === 'ERR' ? 'll-err' : level === 'WARN' ? 'll-warn' : 'll-info';
+  row.innerHTML = `<div class="dlog-ts">${ts}</div><div class="dlog-lv ${lvlCls}">${level}</div><div class="dlog-msg">${msg}</div><div class="dlog-dur">${durationMs ? durationMs + 'ms' : '—'}</div>`;
+  wrap.appendChild(row);
+  wrap.scrollTop = wrap.scrollHeight;
+  document.getElementById('diag-log-count').textContent = diagLog.length;
+}
+
+function diagExportLog() {
+  const lines = diagLog.map(e => `[${e.ts}] [${e.level}] ${e.msg}${e.dur ? ' (' + e.dur + 'ms)' : ''}`);
+  downloadText(lines.join('\n'), 'rosetta-diag-log.txt');
+}
+
+async function diagRecheck() {
+  diagAddLog('INFO', 'Manual re-check triggered');
+  await diagRunAutoDetect();
+}
+
 async function diagRunAutoDetect() {
   const setPill = (id, text, active) => {
-    const el = document.getElementById('dc-pill-'+id);
-    if(!el) return;
+    const el = document.getElementById('dc-pill-' + id);
+    if (!el) return;
     el.textContent = text;
     el.style.background = active ? 'var(--bg-success)' : 'var(--bg3)';
     el.style.color = active ? 'var(--text-success)' : 'var(--text3)';
   };
   const setCard = (id) => {
-    document.getElementById('dc-'+id).className = 'detect-card' + (provider===id ? ' dc-active' : '');
-    setPill(id, provider===id ? 'active' : 'not active', provider===id);
+    document.getElementById('dc-' + id).className = 'detect-card' + (provider === id ? ' dc-active' : '');
+    setPill(id, provider === id ? 'active' : 'not active', provider === id);
   };
+  ['anthropic', 'ollama', 'openai', 'gemini'].forEach(setCard);
 
-  ['anthropic','ollama','openai','gemini'].forEach(setCard);
-
-  // Anthropic
+  // ── Anthropic ──
   const antKey = document.getElementById('anthropic-key').value.trim();
   const antModel = document.getElementById('anthropic-model').value;
   const hasAntKey = antKey.length > 10;
   const fmtOk = antKey.startsWith('sk-ant-');
-  document.getElementById('dcv-ant-key').textContent = hasAntKey ? 'sk-ant-…'+antKey.slice(-4) : 'none';
-  document.getElementById('dcv-ant-key').className = 'dc-val ' + (hasAntKey?'ok':'');
-  document.getElementById('dcv-ant-fmt').textContent = hasAntKey ? (fmtOk?'valid ✓':'unexpected format') : '—';
-  document.getElementById('dcv-ant-fmt').className = 'dc-val ' + (fmtOk&&hasAntKey?'ok':hasAntKey?'warn':'');
+  document.getElementById('dcv-ant-key').textContent = hasAntKey ? 'sk-ant-…' + antKey.slice(-4) : 'none';
+  document.getElementById('dcv-ant-key').className = 'dc-val ' + (hasAntKey ? 'ok' : '');
+  document.getElementById('dcv-ant-fmt').textContent = hasAntKey ? (fmtOk ? 'valid ✓' : 'unexpected format') : '—';
+  document.getElementById('dcv-ant-fmt').className = 'dc-val ' + (fmtOk && hasAntKey ? 'ok' : hasAntKey ? 'warn' : '');
   document.getElementById('dcv-ant-model').textContent = antModel;
-  if(provider==='anthropic' && hasAntKey) {
-    document.getElementById('dcd-ant-conn').className = 'sdot grey';
+  if (provider === 'anthropic' && hasAntKey) {
+    document.getElementById('dcd-ant-conn').className = 'sdot checking';
     document.getElementById('dcv-ant-conn').textContent = 'checking…';
     try {
       const t0 = Date.now();
-      const r = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':antKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:antModel,max_tokens:5,stream:false,messages:[{role:'user',content:'hi'}]})});
-      const ms = Date.now()-t0;
-      document.getElementById('dcd-ant-conn').className = 'sdot '+(r.ok?'green':'red');
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': antKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model: antModel, max_tokens: 5, stream: false, messages: [{ role: 'user', content: 'hi' }] }) });
+      const ms = Date.now() - t0;
+      document.getElementById('dcd-ant-conn').className = 'sdot ' + (r.ok ? 'green' : 'red');
       document.getElementById('dcv-ant-conn').textContent = r.ok ? `${r.status} OK (${ms}ms)` : `${r.status} error`;
-      document.getElementById('dcv-ant-conn').className = 'dc-val '+(r.ok?'ok':'bad');
-    } catch(e) {
+      document.getElementById('dcv-ant-conn').className = 'dc-val ' + (r.ok ? 'ok' : 'bad');
+    } catch (e) {
       document.getElementById('dcd-ant-conn').className = 'sdot red';
       document.getElementById('dcv-ant-conn').textContent = 'unreachable';
       document.getElementById('dcv-ant-conn').className = 'dc-val bad';
     }
+  } else {
+    document.getElementById('dcd-ant-conn').className = 'sdot grey';
+    document.getElementById('dcv-ant-conn').textContent = provider === 'anthropic' ? 'no key' : 'not active';
+    document.getElementById('dcv-ant-conn').className = 'dc-val';
   }
 
-  // Ollama
-  const olUrl = document.getElementById('ollama-url').value.trim().replace(/\/$/,'');
+  // ── Ollama ──
+  const olUrl = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
   const olModel = document.getElementById('ollama-model').value.trim();
-  document.getElementById('dcv-ol-url').textContent = olUrl.replace('http://','').replace('https://','');
-  document.getElementById('dcd-ol-srv').className = 'sdot grey';
+  document.getElementById('dcv-ol-url').textContent = olUrl.replace('http://', '').replace('https://', '');
+  document.getElementById('dcd-ol-srv').className = 'sdot checking';
   document.getElementById('dcv-ol-srv').textContent = 'checking…';
   try {
-    const tags = await fetch(olUrl+'/api/tags').then(r=>r.json());
-    const models = (tags?.models||[]).map(m=>m.name);
-    const modelFound = models.some(m=>m===olModel||m.startsWith(olModel.split(':')[0]));
+    const tags = await fetch(olUrl + '/api/tags').then(r => r.json());
+    const models = (tags?.models || []).map(m => m.name);
+    const modelNames = models.map(m => m.split(':')[0]);
+    const modelFound = models.some(m => m === olModel || m.startsWith(olModel.split(':')[0]));
     document.getElementById('dcd-ol-srv').className = 'sdot green';
     document.getElementById('dcv-ol-srv').textContent = 'running ✓';
     document.getElementById('dcv-ol-srv').className = 'dc-val ok';
-    document.getElementById('dcv-ol-list').textContent = models.length ? models.slice(0,3).map(m=>m.split(':')[0]).join(', ')+(models.length>3?'…':'') : 'none pulled';
-    document.getElementById('dcd-ol-model').className = 'sdot '+(modelFound?'green':'red');
-    document.getElementById('dcv-ol-model').textContent = modelFound ? olModel+' ✓' : olModel+' ✗ not found';
-    document.getElementById('dcv-ol-model').className = 'dc-val '+(modelFound?'ok':'bad');
-    if(!modelFound) diagAddLog('WARN', `Ollama model "${olModel}" not found. Run: ollama pull ${olModel}`);
-  } catch(e) {
+    document.getElementById('dcv-ol-list').textContent = modelNames.length ? modelNames.slice(0, 3).join(', ') + (modelNames.length > 3 ? '…' : '') : 'none pulled';
+    document.getElementById('dcd-ol-model').className = 'sdot ' + (modelFound ? 'green' : 'red');
+    document.getElementById('dcv-ol-model').textContent = modelFound ? olModel + ' ✓' : olModel + ' ✗ not found';
+    document.getElementById('dcv-ol-model').className = 'dc-val ' + (modelFound ? 'ok' : 'bad');
+    if (!modelFound) diagAddLog('WARN', `Ollama model "${olModel}" not found. Run: ollama pull ${olModel}`);
+  } catch (e) {
     document.getElementById('dcd-ol-srv').className = 'sdot red';
     document.getElementById('dcv-ol-srv').textContent = 'not running ✗';
     document.getElementById('dcv-ol-srv').className = 'dc-val bad';
     document.getElementById('dcd-ol-model').className = 'sdot grey';
     document.getElementById('dcv-ol-model').textContent = '—';
     document.getElementById('dcv-ol-list').textContent = '—';
-    if(provider==='ollama') diagAddLog('ERR', 'Ollama not reachable at '+olUrl+' — run: OLLAMA_ORIGINS=* ollama serve');
+    if (provider === 'ollama') diagAddLog('ERR', 'Ollama not reachable at ' + olUrl + ' — run: OLLAMA_ORIGINS=* ollama serve');
   }
 
-  // OpenAI
+  // ── OpenAI ──
   const oaiKey = document.getElementById('openai-key').value.trim();
-  document.getElementById('dcv-oai-key').textContent = oaiKey.length>4 ? 'sk-…'+oaiKey.slice(-4) : 'none';
-  document.getElementById('dcv-oai-key').className = 'dc-val '+(oaiKey.length>4?'ok':'');
+  document.getElementById('dcv-oai-key').textContent = oaiKey.length > 4 ? 'sk-…' + oaiKey.slice(-4) : 'none';
+  document.getElementById('dcv-oai-key').className = 'dc-val ' + (oaiKey.length > 4 ? 'ok' : '');
   document.getElementById('dcv-oai-model').textContent = document.getElementById('openai-model').value;
+  if (provider === 'openai' && oaiKey.length > 4) {
+    document.getElementById('dcd-oai-conn').className = 'sdot checking';
+    document.getElementById('dcv-oai-conn').textContent = 'checking…';
+    try {
+      const t0 = Date.now();
+      const r = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': 'Bearer ' + oaiKey } });
+      const ms = Date.now() - t0;
+      document.getElementById('dcd-oai-conn').className = 'sdot ' + (r.ok ? 'green' : 'red');
+      document.getElementById('dcv-oai-conn').textContent = r.ok ? `OK (${ms}ms)` : `${r.status} error`;
+      document.getElementById('dcv-oai-conn').className = 'dc-val ' + (r.ok ? 'ok' : 'bad');
+    } catch (e) {
+      document.getElementById('dcd-oai-conn').className = 'sdot red';
+      document.getElementById('dcv-oai-conn').textContent = 'unreachable';
+      document.getElementById('dcv-oai-conn').className = 'dc-val bad';
+    }
+  } else {
+    document.getElementById('dcd-oai-conn').className = 'sdot grey';
+    document.getElementById('dcv-oai-conn').textContent = provider === 'openai' ? 'no key' : 'not active';
+    document.getElementById('dcv-oai-conn').className = 'dc-val';
+  }
 
-  // Gemini
+  // ── Gemini ──
   const gemKey = document.getElementById('gemini-key').value.trim();
-  document.getElementById('dcv-gem-key').textContent = gemKey.length>4 ? 'AIza…'+gemKey.slice(-4) : 'none';
-  document.getElementById('dcv-gem-key').className = 'dc-val '+(gemKey.length>4?'ok':'');
+  document.getElementById('dcv-gem-key').textContent = gemKey.length > 4 ? 'AIza…' + gemKey.slice(-4) : 'none';
+  document.getElementById('dcv-gem-key').className = 'dc-val ' + (gemKey.length > 4 ? 'ok' : '');
   document.getElementById('dcv-gem-model').textContent = document.getElementById('gemini-model').value;
+  if (provider === 'gemini' && gemKey.length > 4) {
+    document.getElementById('dcd-gem-conn').className = 'sdot checking';
+    document.getElementById('dcv-gem-conn').textContent = 'checking…';
+    try {
+      const t0 = Date.now();
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + gemKey);
+      const ms = Date.now() - t0;
+      document.getElementById('dcd-gem-conn').className = 'sdot ' + (r.ok ? 'green' : 'red');
+      document.getElementById('dcv-gem-conn').textContent = r.ok ? `OK (${ms}ms)` : `${r.status} error`;
+      document.getElementById('dcv-gem-conn').className = 'dc-val ' + (r.ok ? 'ok' : 'bad');
+    } catch (e) {
+      document.getElementById('dcd-gem-conn').className = 'sdot red';
+      document.getElementById('dcv-gem-conn').textContent = 'unreachable';
+      document.getElementById('dcv-gem-conn').className = 'dc-val bad';
+    }
+  } else {
+    document.getElementById('dcd-gem-conn').className = 'sdot grey';
+    document.getElementById('dcv-gem-conn').textContent = provider === 'gemini' ? 'no key' : 'not active';
+    document.getElementById('dcv-gem-conn').className = 'dc-val';
+  }
 
-  diagAddLog('INFO', 'Auto-detect complete · active: '+provider);
+  diagAddLog('INFO', 'Auto-detect complete · active: ' + provider);
 }
-
-// Page load log
-window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => diagAddLog('INFO', 'Page loaded · provider: '+provider), 200);
-});
 </script>
 </body>
 </html>
