@@ -270,6 +270,7 @@
     </div>
   </div>
   <div class="app-sub">Rosetta Stone &nbsp;·&nbsp; translate legacy scripts into modern automation</div>
+  <div style="font-size:11px;color:var(--text3);padding-left:36px;margin-top:-10px;margin-bottom:1.5rem;">by: Britley Hoff</div>
 
   <!-- Settings Panel -->
   <div class="settings-panel" id="settings-panel">
@@ -303,17 +304,13 @@
             </select>
             <input type="text" id="ollama-model-manual" placeholder="Or type model name manually…" style="margin-top:4px;display:none;" oninput="syncOllamaManual(this.value)">
           </div>
-          <div id="ollama-cors-cmd" style="margin-top:6px;padding:8px 10px;border-radius:6px;font-size:11px;line-height:1.6;background:var(--bg2);border:0.5px solid var(--border);">
-            <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);margin-bottom:4px;">Start Ollama with CORS for this page</div>
-            <code id="ollama-cors-snippet" style="font-family:var(--mono);font-size:11px;color:var(--text);word-break:break-all;"></code>
-            <button onclick="copyOllamaCmd()" style="display:block;margin-top:6px;font-size:10px;font-family:var(--sans);background:none;border:0.5px solid var(--border2);border-radius:4px;padding:2px 8px;cursor:pointer;color:var(--text2);" id="ollama-copy-btn">Copy command</button>
-          </div>
+          <div id="ollama-cors-cmd" style="display:none;"></div>
           <div style="display:flex;gap:6px;margin-top:6px;">
             <button class="btn btn-sm" onclick="ollamaProbe()" style="flex:1;">🔍 Test &amp; load models</button>
             <button class="btn btn-sm" onclick="refreshOllamaModels()" style="flex:1;">↺ Retry fetch</button>
           </div>
           <div id="ollama-probe-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);line-height:1.6;word-break:break-all;border:0.5px solid var(--border);background:var(--bg2);color:var(--text2);"></div>
-          <p class="settings-note" style="margin-top:6px;">Models are loaded from your running Ollama instance. Context window is managed automatically.</p>
+          <p class="settings-note" id="ollama-cors-note" style="margin-top:6px;">Models load automatically from your local Ollama instance. Use <strong>launch.py</strong> to serve locally, or see the probe output below for connection help.</p>
         </div>
 
         <!-- Anthropic fields -->
@@ -783,22 +780,35 @@ function syncOllamaManual(val) {
 }
 
 // ─── Ollama CORS command — auto-detects page origin ───────────────
+function isNoCorsNeeded() {
+  // file:// and localhost origins are already trusted by Ollama — no CORS env var needed
+  const proto = window.location.protocol;
+  const host = window.location.hostname;
+  if (proto === 'file:') return true;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') return true;
+  return false;
+}
+
 function buildOllamaOrigin() {
+  if (isNoCorsNeeded()) return null;
   const origin = window.location.origin;
-  // 'null' origin means file:// — use literal null string which Ollama accepts
-  return origin === 'null' || origin === '' ? 'null' : origin;
+  return (origin === 'null' || origin === '') ? null : origin;
 }
 
 function renderOllamaCorsCmd() {
   const origin = buildOllamaOrigin();
-  const snippet = document.getElementById('ollama-cors-snippet');
-  if (!snippet) return;
-  snippet.textContent = 'OLLAMA_ORIGINS="' + origin + '" ollama serve';
+  const note = document.getElementById('ollama-cors-note');
+  if (!note) return;
+  if (origin === null) {
+    note.innerHTML = 'Models load automatically from your local Ollama instance. Run <strong>launch.py</strong> to serve locally, then start Ollama with <code style="font-family:var(--mono);">ollama serve</code>.';
+  } else {
+    note.innerHTML = 'Models load from your local Ollama instance. To allow connections from this page, start Ollama with:<br><code style="font-family:var(--mono);font-size:10.5px;">OLLAMA_ORIGINS="' + origin + '" ollama serve</code>';
+  }
 }
 
 function copyOllamaCmd() {
   const origin = buildOllamaOrigin();
-  const cmd = 'OLLAMA_ORIGINS="' + origin + '" ollama serve';
+  const cmd = origin ? 'OLLAMA_ORIGINS="' + origin + '" ollama serve' : 'ollama serve';
   navigator.clipboard.writeText(cmd).then(() => {
     const btn = document.getElementById('ollama-copy-btn');
     btn.textContent = 'Copied!';
@@ -819,12 +829,22 @@ async function loadOllamaModels() {
     cachedOllamaModels = null; // don't cache failures — allow retry
     const isCors = e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('networkerror') || e.name === 'TypeError';
     const isTimeout = e.name === 'AbortError';
+    const noCorsSituation = isNoCorsNeeded();
     let hint;
-    if (isTimeout) hint = 'timeout — Ollama not responding';
-    else if (isCors) hint = 'CORS error — restart Ollama with: OLLAMA_ORIGINS=* ollama serve';
-    else hint = e.message;
+    if (isTimeout) {
+      hint = 'timeout — is Ollama running?';
+    } else if (isCors) {
+      if (noCorsSituation) {
+        hint = 'network error — is Ollama running? Try: ollama serve';
+      } else {
+        const origin = window.location.origin;
+        hint = 'CORS blocked from ' + origin + '\nFix: OLLAMA_ORIGINS="' + origin + '" ollama serve';
+      }
+    } else {
+      hint = e.message;
+    }
     ollamaModelFallback(hint);
-    diagAddLog('ERR', 'Ollama model load failed: ' + hint);
+    diagAddLog('ERR', 'Ollama model load failed: ' + hint.replace('\n', ' — '));
   }
 }
 
@@ -845,53 +865,87 @@ async function ollamaProbe() {
   const ok  = s => steps.push('✅ ' + s);
   const err = s => steps.push('❌ ' + s);
   const inf = s => steps.push('ℹ️  ' + s);
+  const warn = s => steps.push('⚠️  ' + s);
 
-  // Step 1 — basic reachability
+  // When opened as a local file, the browser sends no Origin header so Ollama
+  // never echoes back Access-Control-Allow-Origin — that is expected and fine.
+  const isFileOrigin = isNoCorsNeeded();
+  const pageOrigin = window.location.protocol === 'file:' ? 'file:// (local)'
+    : isFileOrigin ? window.location.origin + ' (localhost — trusted by Ollama)'
+    : window.location.origin;
+  inf('Page origin: ' + pageOrigin);
+
+  // ── Step 1: root reachability ──
+  let rootOk = false;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
     const r = await fetch(base, { signal: controller.signal });
     clearTimeout(timer);
     const text = await r.text();
+    rootOk = true;
     ok('Server reachable — HTTP ' + r.status);
     if (text.toLowerCase().includes('ollama')) ok('Root response looks like Ollama');
     else inf('Root response: ' + text.slice(0, 60));
+
+    // CORS header check — only meaningful for non-file:// origins
     const corsHeader = r.headers.get('access-control-allow-origin');
-    if (corsHeader) ok('CORS header present: ' + corsHeader);
-    else err('No Access-Control-Allow-Origin header — CORS not enabled');
+    if (isFileOrigin) {
+      inf('CORS header check skipped — file:// origin does not require it');
+    } else if (corsHeader) {
+      ok('CORS header present: ' + corsHeader);
+    } else {
+      err('No Access-Control-Allow-Origin header for origin: ' + pageOrigin);
+      inf('Fix: OLLAMA_ORIGINS="' + pageOrigin + '" ollama serve');
+    }
   } catch (e) {
     if (e.name === 'AbortError') {
-      err('Connection timed out after 4s — Ollama may not be running');
-    } else if (e.message.toLowerCase().includes('failed to fetch') || e instanceof TypeError) {
-      err('Network error / CORS block — browser refused the request');
-      inf('Fix: restart Ollama with   OLLAMA_ORIGINS=* ollama serve');
+      err('Connection timed out after 4s — is Ollama running?');
+    } else if (e instanceof TypeError || e.message.toLowerCase().includes('failed to fetch')) {
+      if (isFileOrigin) {
+        err('Network error — Ollama may not be running at ' + base);
+      } else {
+        err('CORS block — browser rejected request from ' + pageOrigin);
+        inf('Fix: OLLAMA_ORIGINS="' + pageOrigin + '" ollama serve');
+      }
     } else {
       err('Unexpected error: ' + e.message);
     }
-    out.textContent = steps.join('\n');
+    out.innerHTML = steps.join('\n');
     out.style.color = 'var(--text-danger)';
     return;
   }
 
-  // Step 2 — /api/tags
+  // ── Step 2: /api/tags + model load ──
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
     const r = await fetch(base + '/api/tags', { signal: controller.signal });
     clearTimeout(timer);
+
+    // CORS header on /api/tags — again only flag if not file://
     const corsHeader = r.headers.get('access-control-allow-origin');
-    if (corsHeader) ok('/api/tags CORS header: ' + corsHeader);
-    else err('/api/tags missing CORS header — fetch() will be blocked');
+    if (!isFileOrigin) {
+      if (corsHeader) ok('/api/tags CORS header: ' + corsHeader);
+      else err('/api/tags missing CORS header — API calls will be blocked from ' + pageOrigin);
+    }
+
     if (!r.ok) { err('/api/tags returned HTTP ' + r.status); out.textContent = steps.join('\n'); return; }
     const data = await r.json();
     const models = (data.models || []).map(m => m.name);
     if (models.length) {
       ok('Found ' + models.length + ' model(s): ' + models.join(', '));
+      // Load into dropdown immediately
       cachedOllamaModels = models;
       populateOllamaModelDropdown(models);
       diagAddLog('OK', 'Probe loaded ' + models.length + ' Ollama model(s)');
+      // If we got models but CORS was missing, warn about actual API calls failing
+      if (!isFileOrigin && !corsHeader) {
+        warn('Models listed OK but API calls during conversion will still be blocked');
+        warn('Set OLLAMA_ORIGINS and restart Ollama to fix generation');
+      }
     } else {
-      err('/api/tags returned empty models array');
+      err('/api/tags returned no models — pull one first');
       inf('Run:  ollama pull qwen2.5-coder');
     }
   } catch (e) {
@@ -901,7 +955,8 @@ async function ollamaProbe() {
 
   out.textContent = steps.join('\n');
   const hasErr = steps.some(s => s.startsWith('❌'));
-  out.style.color = hasErr ? 'var(--text-danger)' : 'var(--text-success)';
+  const hasWarn = steps.some(s => s.startsWith('⚠️'));
+  out.style.color = hasErr ? 'var(--text-danger)' : hasWarn ? 'var(--text-warn)' : 'var(--text-success)';
 }
 
 
@@ -1697,7 +1752,12 @@ async function diagRunAutoDetect() {
     document.getElementById('dcd-ol-model').className = 'sdot grey';
     document.getElementById('dcv-ol-model').textContent = '—';
     document.getElementById('dcv-ol-list').textContent = '—';
-    if (provider === 'ollama') diagAddLog('ERR', 'Ollama not reachable at ' + olUrl + ' — run: OLLAMA_ORIGINS=* ollama serve');
+    if (provider === 'ollama') {
+      const fixCmd = isNoCorsNeeded()
+        ? 'ollama serve'
+        : 'OLLAMA_ORIGINS="' + window.location.origin + '" ollama serve';
+      diagAddLog('ERR', 'Ollama not reachable at ' + olUrl + ' — run: ' + fixCmd);
+    }
   }
 
   // ── OpenAI ──
