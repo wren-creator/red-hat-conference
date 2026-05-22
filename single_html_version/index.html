@@ -303,12 +303,17 @@
             </select>
             <input type="text" id="ollama-model-manual" placeholder="Or type model name manually…" style="margin-top:4px;display:none;" oninput="syncOllamaManual(this.value)">
           </div>
-          <p class="settings-note">Run with CORS enabled: <code style="font-family:var(--mono);font-size:10px;">OLLAMA_ORIGINS=* ollama serve</code><br>Models are loaded from your running Ollama instance. Context window is managed automatically.</p>
+          <div id="ollama-cors-cmd" style="margin-top:6px;padding:8px 10px;border-radius:6px;font-size:11px;line-height:1.6;background:var(--bg2);border:0.5px solid var(--border);">
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);margin-bottom:4px;">Start Ollama with CORS for this page</div>
+            <code id="ollama-cors-snippet" style="font-family:var(--mono);font-size:11px;color:var(--text);word-break:break-all;"></code>
+            <button onclick="copyOllamaCmd()" style="display:block;margin-top:6px;font-size:10px;font-family:var(--sans);background:none;border:0.5px solid var(--border2);border-radius:4px;padding:2px 8px;cursor:pointer;color:var(--text2);" id="ollama-copy-btn">Copy command</button>
+          </div>
           <div style="display:flex;gap:6px;margin-top:6px;">
             <button class="btn btn-sm" onclick="ollamaProbe()" style="flex:1;">🔍 Test &amp; load models</button>
             <button class="btn btn-sm" onclick="refreshOllamaModels()" style="flex:1;">↺ Retry fetch</button>
           </div>
           <div id="ollama-probe-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);line-height:1.6;word-break:break-all;border:0.5px solid var(--border);background:var(--bg2);color:var(--text2);"></div>
+          <p class="settings-note" style="margin-top:6px;">Models are loaded from your running Ollama instance. Context window is managed automatically.</p>
         </div>
 
         <!-- Anthropic fields -->
@@ -671,6 +676,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const am = localStorage.getItem('rs_anthropic_model'); if(am) document.getElementById('anthropic-model').value=am;
   setProvider(savedProv);
   loadSample();
+  renderOllamaCorsCmd();
   setTimeout(() => diagAddLog('INFO', 'Page loaded · provider: ' + provider), 150);
 });
 
@@ -699,6 +705,7 @@ function setProvider(p) {
 
   // Populate dynamic model dropdowns
   if (p === 'ollama') {
+    renderOllamaCorsCmd();
     loadOllamaModels();
   } else if (p === 'openai') {
     loadOpenAIModels();
@@ -773,6 +780,30 @@ function syncOllamaManual(val) {
     select.options[0].textContent = val || 'qwen2.5-coder';
     select.value = select.options[0].value;
   }
+}
+
+// ─── Ollama CORS command — auto-detects page origin ───────────────
+function buildOllamaOrigin() {
+  const origin = window.location.origin;
+  // 'null' origin means file:// — use literal null string which Ollama accepts
+  return origin === 'null' || origin === '' ? 'null' : origin;
+}
+
+function renderOllamaCorsCmd() {
+  const origin = buildOllamaOrigin();
+  const snippet = document.getElementById('ollama-cors-snippet');
+  if (!snippet) return;
+  snippet.textContent = 'OLLAMA_ORIGINS="' + origin + '" ollama serve';
+}
+
+function copyOllamaCmd() {
+  const origin = buildOllamaOrigin();
+  const cmd = 'OLLAMA_ORIGINS="' + origin + '" ollama serve';
+  navigator.clipboard.writeText(cmd).then(() => {
+    const btn = document.getElementById('ollama-copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy command', 1800);
+  });
 }
 
 async function loadOllamaModels() {
