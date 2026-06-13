@@ -389,10 +389,11 @@
         <div class="field">
           <label>Max tokens per request</label>
           <select id="max-tokens">
-            <option value="500">500 (Ollama small models)</option>
-            <option value="1000" selected>1000 (default)</option>
-            <option value="2000">2000</option>
-            <option value="4000">4000 (large files)</option>
+            <option value="500">500 — small scripts only (&lt;20 lines)</option>
+            <option value="1000">1000 — short scripts (&lt;50 lines)</option>
+            <option value="2000">2000 — medium scripts</option>
+            <option value="4000">4000 — recommended for real scripts</option>
+            <option value="8000" selected>8000 — large scripts (300+ lines, cloud provider recommended)</option>
           </select>
         </div>
         <div class="field">
@@ -519,6 +520,7 @@
         <select id="src-lang" onchange="onSrcChange()">
           <option value="bash">Bash / Shell</option>
           <option value="perl">Perl</option>
+          <option value="powershell">PowerShell</option>
           <option value="cobol">COBOL</option>
           <option value="rexx">REXX (z/VM Mainframe)</option>
           <option value="fortran">Fortran</option>
@@ -550,7 +552,7 @@
         <span>Legacy source code</span>
         <button class="sec-action" onclick="loadSample()">load sample &#8594;</button>
       </div>
-      <textarea id="code-input" placeholder="Paste your legacy script here&#8230;"></textarea>
+      <textarea id="code-input" placeholder="Paste your legacy script here&#8230;" oninput="onCodeInput()"></textarea>
     </div>
 
     <!-- Batch mode -->
@@ -560,7 +562,7 @@
         <button class="btn" style="flex:1;" onclick="document.getElementById('fp').click()">&#128196; Pick files&#8230;</button>
       </div>
       <input type="file" id="fp" multiple
-        accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh,.rex,.rexx,.exec"
+        accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh,.rex,.rexx,.exec,.ps1,.psm1,.psd1"
         style="display:none;" onchange="handleFilePicker(this)">
       <div class="drop-zone" id="drop-zone"
            ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -568,7 +570,7 @@
            ondrop="handleDrop(event)">
         <div class="dz-icon">&#8613;</div>
         <p>Drop files or a folder here</p>
-        <p class="sub">.sh .bash .pl .cob .f .awk .tcl .csh .rex .rexx and more</p>
+        <p class="sub">.sh .bash .pl .ps1 .cob .f .awk .tcl .csh .rex .rexx and more</p>
       </div>
       <div class="sec-label" style="margin-bottom:6px;">
         <span>Output directory</span>
@@ -644,6 +646,7 @@
 const SAMPLES = {
   bash:`#!/bin/bash\n# backup.sh — backs up /var/data to /mnt/backup with timestamp\nset -euo pipefail\nSRC="/var/data"\nDEST="/mnt/backup/$(date +%Y%m%d_%H%M%S)"\nmkdir -p "$DEST"\ncp -r "$SRC/"* "$DEST/"\nfind "$DEST" -name "*.log" -mtime +30 -delete\necho "Backup complete: $DEST"`,
   perl:`#!/usr/bin/perl\n# parse_logs.pl — counts 5xx errors per IP in Apache log\nuse strict; use warnings;\nmy $logfile = $ARGV[0] or die "Usage: $0 <logfile>\\n";\nmy %counts;\nopen(my $fh,'<',$logfile) or die "Cannot open: $!";\nwhile(<$fh>){ $counts{$1}++ if /^(\\S+).+\\s(5\\d{2})\\s/; }\nclose $fh;\nfor my $ip (sort{$counts{$b}<=>$counts{$a}} keys %counts){\n  printf "%s\\t%d\\n",$ip,$counts{$ip};\n}`,
+  powershell:`# server-inventory.ps1 — collects server info and restarts a service with credentials\nparam(\n  [string]$ServiceName = "myapp",\n  [string]$Server      = "localhost"\n)\n$ErrorActionPreference = "Stop"\n\n# Gather hardware info via WMI\n$os  = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $Server\n$cpu = Get-WmiObject -Class Win32_Processor      -ComputerName $Server\n$disk = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType=3"\n\nWrite-Host "OS: $($os.Caption) | CPU: $($cpu.Name) | Free disk: $([math]::Round($disk.FreeSpace/1GB,1)) GB"\n\n# Authenticate and restart service\n$cred = Get-Credential -Message "Enter admin credentials for $Server"\n$password = "S3cur3P@ss!"\nInvoke-Command -ComputerName $Server -Credential $cred -ScriptBlock {\n  Restart-Service -Name $using:ServiceName -Force\n  Write-Host "Service restarted."\n}`,
   cobol:`       IDENTIFICATION DIVISION.\n       PROGRAM-ID. CALC-TAX.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-INCOME PIC 9(7)V99.\n       01 WS-TAX    PIC 9(7)V99.\n       PROCEDURE DIVISION.\n           MOVE 55000.00 TO WS-INCOME\n           COMPUTE WS-TAX = WS-INCOME * 0.22\n           DISPLAY "Tax: " WS-TAX\n           STOP RUN.`,
   rexx:`/* REXX */\n/* sysinfo.rex — display basic system info via z/VM CP commands */\nARG username\nIF username = '' THEN username = 'OPERATOR'\nSAY 'Hello,' username'!'\nADDRESS COMMAND 'CP QUERY TIME'\nADDRESS COMMAND 'CP QUERY STORAGE'\nPULL response\nSAY 'Response:' response\nEXIT 0`,
   awk:`#!/usr/bin/awk -f\n# sum_col.awk — sums column 3 grouped by column 1\nBEGIN { FS="," }\nNR > 1 { group[$1] += $3 }\nEND { for(g in group) printf "%s: %.2f\\n",g,group[g] }`,
@@ -653,7 +656,7 @@ const SAMPLES = {
 };
 const TGT_LABELS={ansible:'Ansible YAML',python3:'Python 3',terraform:'Terraform HCL',go:'Go',powershell:'PowerShell'};
 const TGT_EXT={ansible:'yml',python3:'py',terraform:'tf',go:'go',powershell:'ps1'};
-const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh','rex','rexx','exec'];
+const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh','rex','rexx','exec','ps1','psm1','psd1'];
 
 let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='ollama';
@@ -1113,8 +1116,38 @@ async function testConnection() {
   showConnStatus('Testing…', false, false);
   savePrefs();
   try {
-    const r = await callAI('You are a test assistant.', 'Say hello in one short sentence.', () => {});
-    showConnStatus('Connected — ' + r.trim().slice(0, 50), true, false);
+    // Use lightweight connectivity checks — no generation tokens consumed
+    if (provider === 'ollama') {
+      const base = document.getElementById('ollama-url').value.trim().replace(/\/$/, '');
+      const r = await fetch(base + '/api/tags');
+      if (!r.ok) throw new Error('Ollama returned HTTP ' + r.status);
+      const data = await r.json();
+      const count = (data.models || []).length;
+      showConnStatus('Connected — ' + count + ' model(s) available', true, false);
+    } else if (provider === 'anthropic') {
+      const key = document.getElementById('anthropic-key').value.trim();
+      if (!key) throw new Error('No API key set');
+      const model = document.getElementById('anthropic-model').value;
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model, max_tokens: 5, stream: false, messages: [{ role: 'user', content: 'hi' }] })
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e?.error?.message || 'HTTP ' + r.status); }
+      showConnStatus('Connected — Anthropic API reachable', true, false);
+    } else if (provider === 'openai') {
+      const key = document.getElementById('openai-key').value.trim();
+      if (!key) throw new Error('No API key set');
+      const r = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': 'Bearer ' + key } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      showConnStatus('Connected — OpenAI API reachable', true, false);
+    } else if (provider === 'gemini') {
+      const key = document.getElementById('gemini-key').value.trim();
+      if (!key) throw new Error('No API key set');
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      showConnStatus('Connected — Gemini API reachable', true, false);
+    }
   } catch (e) {
     showConnStatus('Failed: ' + e.message, false, true);
   }
@@ -1142,11 +1175,11 @@ async function checkOllamaContext(code) {
   const totalNeeded = estimatedTokens + 2048;
   if (totalNeeded <= currentCtx) return { ok: true, estimatedTokens, numCtx: null };
 
-  const MAX_SAFE_CTX = 16384;
+  const MAX_SAFE_CTX = 8192;
   if (totalNeeded <= MAX_SAFE_CTX) {
     const newCtx = Math.min(totalNeeded + 1024, MAX_SAFE_CTX);
     banner.className = 'ctx-banner show ctx-amber';
-    banner.innerHTML = `<strong>&#9888; Large script — auto-expanding context</strong>Script is ~${estimatedTokens.toLocaleString()} tokens. Increasing Ollama context to ${newCtx.toLocaleString()} — may cause a brief delay.`;
+    banner.innerHTML = `<strong>&#9888; Large script — auto-expanding context</strong>Script is ~${estimatedTokens.toLocaleString()} tokens. Scripts over 300 lines are best processed with a cloud provider for reliable output quality. Expanding Ollama context to ${newCtx.toLocaleString()} — results may be degraded.`;
     return { ok: true, estimatedTokens, numCtx: newCtx, warned: true };
   }
 
@@ -1326,7 +1359,20 @@ function setMode(m) {
   document.getElementById('summary-panel').classList.remove('show');
 }
 function loadSample() { document.getElementById('code-input').value = SAMPLES[document.getElementById('src-lang').value] || SAMPLES.bash; }
-function onSrcChange() { const v = document.getElementById('code-input').value.trim(); if (!v || Object.values(SAMPLES).includes(v)) loadSample(); }
+function onSrcChange() {
+  const v = document.getElementById('code-input').value.trim();
+  if (!v || Object.values(SAMPLES).includes(v)) loadSample();
+  onCodeInput();
+}
+function onCodeInput() {
+  const src = document.getElementById('src-lang').value;
+  const banner = document.getElementById('warn-banner');
+  if (src !== 'powershell') { banner.className = 'warn-banner'; return; }
+  const code = document.getElementById('code-input').value;
+  const findings = scanPowerShell(code);
+  if (findings.length) showPreflightWarnings(findings);
+  else banner.className = 'warn-banner';
+}
 function isLegacy(name) { return LEGACY_EXTS.includes(name.split('.').pop().toLowerCase()); }
 function switchTab(tab) {
   ['docs', 'tests', 'converted'].forEach(t => {
@@ -1433,22 +1479,168 @@ async function saveFile(base, suffix, content) {
   try { const fh = await outputDirHandle.getFileHandle(base + suffix, { create: true }); const w = await fh.createWritable(); await w.write(content); await w.close(); } catch (e) { console.warn('Save failed:', e); }
 }
 
-// ─── Core processing ──────────────────────────────────────────────
-const SYS = 'You are a senior software engineer. Be concise and direct. For documentation use plain text with labeled sections — no markdown headers or fences. For code output raw code only, no backtick fences, no preamble.';
+// ─── Step-specific system prompts ────────────────────────────────
+const SYS_DOC     = 'You are a senior software engineer documenting legacy code for migration. Write thorough, accurate documentation covering all behaviors and edge cases. Use plain text with labeled sections — no markdown headers, no backtick fences, no bullet symbols.';
+const SYS_REVIEW  = 'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation, no backtick fences.';
+const SYS_TEST    = 'You are a senior QA engineer writing migration validation tests. Your only job is to produce a complete, runnable test script. Output ONLY raw code. Absolutely no backtick fences, no preamble, no explanation outside of code comments. Do not truncate — write every test completely.';
+const SYS_CONVERT = 'You are a senior automation engineer specializing in legacy script migration to modern infrastructure-as-code. Output ONLY the converted code — no backtick fences, no preamble, no explanation, no commentary before or after the code. If something cannot be converted cleanly, insert a # TODO: MANUAL REVIEW comment at that exact location with a specific reason. Write the complete output — never truncate.';
 
+// ─── Language-specific prompt hints ──────────────────────────────
+const LANG_HINTS = {
+  bash: {
+    convert: `Bash-specific: Preserve pipelines — pipe chains map to registered vars + subsequent tasks in Ansible, or chained calls in Python/Go. set -euo pipefail semantics map to ignore_errors: no in Ansible, raise on non-zero in Python. Brace expansion and glob patterns need explicit equivalents. Here-docs map to ansible.builtin.copy content: blocks or Python triple-quoted strings. Process substitution <() has no clean equivalent — insert TODO. $() command substitution maps to register: in Ansible. Trap/signal handling needs explicit mapping or TODO.`,
+    test: `Bash-specific: Tests must verify exit code behavior under set -e, pipeline failure propagation, glob expansion results, and any trap/cleanup handlers. For Ansible targets, verify registered vars contain expected stdout. Assert on side effects: files created, directories changed, permissions set.`,
+  },
+  perl: {
+    convert: `Perl-specific: $_ implicit variable must be made explicit in all targets. @_ in subroutines maps to function parameters. Special variables: $! (errno) → OSError, $@ (eval error) → try/except, $/ (input record separator) → file read mode, $0 → sys.argv[0]. Regex with /g modifier in while loops → re.finditer() or findall(). die → raise RuntimeError. Perl references and dereferencing ($$ref, @$ref, %$ref) need care. CPAN module usage must be mapped to stdlib equivalents or flagged with TODO. Hash slices (@hash{@keys}) need explicit loops in most targets.`,
+    test: `Perl-specific: Tests must cover regex capture group behavior and /g loop semantics, die/eval error handling, file handle open/close and $! error states, hash and array reference dereferencing, any CPAN module behavior being replaced, and $/ separator edge cases.`,
+  },
+  powershell: {
+    convert: `PowerShell-specific: Map cmdlets to Ansible modules wherever possible — never use ansible.builtin.shell when a proper module exists.
+Stop-Service / Start-Service → ansible.builtin.service (state: stopped / started).
+Restart-Service → ansible.builtin.service (state: restarted).
+Copy-Item → ansible.builtin.copy or ansible.builtin.synchronize.
+New-Item -ItemType Directory → ansible.builtin.file (state: directory).
+Remove-Item → ansible.builtin.file (state: absent).
+Test-Path → ansible.builtin.stat + when: condition.
+Set-ItemProperty (registry) → ansible.windows.win_regedit — insert TODO if uncertain.
+IIS operations → community.windows.win_iis_* modules — insert TODO if no module exists.
+Invoke-WebRequest / Invoke-RestMethod → ansible.builtin.uri.
+Write-Host / Write-Output → ansible.builtin.debug (msg:).
+param() block → Ansible vars: or extra_vars — preserve all parameter defaults.
+[string]/[int]/[bool] type constraints → document in var comments.
+Try/Catch/Finally → block: / rescue: / always: in Ansible.
+$ErrorActionPreference = "Stop" → ignore_errors: no (Ansible default, state explicitly).
+$env:VAR → lookup('env', 'VAR') or environment: block.
+ForEach-Object / foreach loop → loop: in Ansible.
+Where-Object → when: condition on tasks.
+Pipeline (cmd | cmd) → register output of first task, reference in second.
+Windows paths (C:\\path) → note whether Ansible runs on Linux controller targeting Windows nodes (ansible.windows collection) or natively on Windows — add a comment clarifying assumed setup.
+Prefer idempotent module parameters (state:, creates:, removes:) over imperative shell calls. Every task must have a descriptive name:.
+Add a hosts: and become: block appropriate for the target OS at the top of the playbook.
+
+WMI / CIM — CRITICAL: Get-WmiObject and Get-CimInstance have NO direct Ansible module equivalent.
+Every occurrence MUST get a # TODO: MANUAL REVIEW — WMI/CIM comment with the specific class name.
+Map common classes where a module exists:
+  Win32_Service → ansible.builtin.service or ansible.windows.win_service.
+  Win32_Process → ansible.windows.win_command or ansible.windows.win_shell.
+  Win32_Product (software inventory) → ansible.windows.win_package — insert TODO, this is slow and unreliable.
+  Win32_NetworkAdapterConfiguration → ansible.windows.win_dns_client or TODO.
+  CIM_* classes with no module equivalent → ansible.windows.win_shell with powershell: true + TODO.
+Never silently drop a WMI/CIM call — always surface it as a TODO so a human can validate.
+
+Credentials / Secrets — CRITICAL: Never emit plaintext credentials in the converted output.
+Get-Credential → # TODO: MANUAL REVIEW — replace with Ansible Vault encrypted variable. Add a vars_files: reference to a vault file and document the expected variable name.
+[PSCredential] / New-Object PSCredential → same as above — Ansible Vault var.
+ConvertTo-SecureString -AsPlainText → # TODO: MANUAL REVIEW — plaintext secret detected. Move to Ansible Vault immediately. Never include the literal value.
+ConvertFrom-SecureString → # TODO: MANUAL REVIEW — encrypted string storage. Use Ansible Vault instead.
+$password / $passwd / $secret / $apikey / $token variable names containing literal values → # TODO: MANUAL REVIEW — potential plaintext secret. Move to Ansible Vault.
+Where Vault is referenced, add a comment showing the expected ansible-vault command: ansible-vault encrypt_string 'value' --name 'var_name'`,
+    test: `PowerShell-specific: Tests must verify param() default value behavior, Stop/Start-Service idempotency (service already in desired state — no change on second run), Copy-Item recursive behavior and overwrite semantics, error handling ($ErrorActionPreference / Try/Catch) maps correctly to block/rescue, and any registry or IIS operations (flag as TODO: REQUIRES WINDOWS if untestable). For Ansible output: verify playbook runs cleanly in --check mode, and assert that running the playbook twice produces changed=0 on the second run (idempotency check). Assert that all param() variables are correctly wired as Ansible vars/extra_vars.
+WMI/CIM: Every Get-WmiObject / Get-CimInstance occurrence must have a corresponding test that either validates the replacement module behavior or is explicitly marked TODO: REQUIRES WINDOWS — MANUAL VALIDATION.
+Credentials: Assert that NO test contains a plaintext password or secret value. All credential references must use a mock vault variable or environment variable placeholder.`,
+  },
+  cobol: {
+    convert: `COBOL-specific: WORKING-STORAGE variables → playbook vars or typed Python variables. Map PIC 9(n)V99 implied-decimal fields explicitly — do NOT silently truncate decimal precision. PERFORM → function or loop. PERFORM UNTIL tests before executing (like while, not do-while). COMPUTE → arithmetic. MOVE → assignment. EVALUATE → match/case or if/elif. FILE SECTION / OPEN / READ / WRITE → file I/O — never silently drop file operations. COPY (copybook) → cannot be resolved without source — always insert TODO: MANUAL REVIEW with the copybook name. VSAM → TODO. CALL → subprocess or TODO. STRING/UNSTRING → string split/join. INSPECT → re.sub(). Level-88 condition names → named constants or Enum.`,
+    test: `COBOL-specific: Tests MUST verify decimal precision — PIC V-notation implied decimals are the most common conversion bug. Assert on PERFORM loop iteration counts, EVALUATE branch coverage, MOVE numeric truncation behavior, STRING/UNSTRING delimiter handling, and any file I/O operations. Flag any test requiring a copybook as TODO: NEEDS COPYBOOK.`,
+  },
+  rexx: {
+    convert: `REXX-specific: ADDRESS COMMAND executes host OS commands → ansible.builtin.shell or subprocess.run(). ADDRESS TSO/ISPF/CMS/CP are z/VM or TSO environment-specific → ansible.builtin.shell with a note, or TODO if no Linux equivalent. EXECIO * DISKR reads all lines, EXECIO * DISKW writes all lines → file read/write. SAY → print() or ansible debug: msg:. ARG uppercases all input by default — account for this in string comparisons. PULL reads from stdin (also uppercases). PARSE ARG/PULL/VAR → explicit string splitting. Stem variables (array.0 = count, array.1..n = values) → list or dict. SIGNAL ON ERROR → try/except. INTERPRET (dynamic eval) → always TODO.`,
+    test: `REXX-specific: Tests must verify ARG uppercasing behavior, SAY output capture, EXECIO file read/write round-trips, stem variable indexing (array.0 is count), PARSE ARG tokenization. Flag any test requiring z/VM as TODO: REQUIRES Z/VM.`,
+  },
+  fortran: {
+    convert: `Fortran-specific: IMPLICIT NONE — all variables explicitly typed, preserve types precisely. DO loop with label (DO 10 I=1,N / 10 CONTINUE) → for i in range(1, n+1). Fortran is 1-indexed — adjust all array accesses for 0-indexed targets. COMMON blocks → module-level variables or config dict + TODO. EQUIVALENCE → always TODO. WRITE(*,*) and FORMAT → print() with f-strings. SUBROUTINE/FUNCTION → def or func. INTENT(IN/OUT/INOUT) → document in docstring. Whole-array arithmetic → NumPy or explicit loops. OPEN/CLOSE/READ/WRITE file units → with open() blocks. GOTO → restructure as loop/break or TODO. DATA statement initializers → variable declarations with initial values.`,
+    test: `Fortran-specific: Tests MUST verify floating-point precision — Fortran REAL vs Python float can produce different rounding. Assert on loop bounds (1-indexed source vs 0-indexed target — off-by-one is the most common Fortran conversion bug), WRITE format output, array operation results, and SUBROUTINE INTENT(OUT) side effects.`,
+  },
+  awk: {
+    convert: `AWK-specific: BEGIN block → setup/init before main loop. END block → teardown/summary after loop. Pattern { action } → if (condition): inside a line-iteration loop. FS → split() delimiter. NR → enumerate() index + 1. NF → len(fields). $0 → full line. $1..$n → fields[0]..fields[n-1] (0-indexed). printf → f-string or fmt.Printf(). getline → file read or subprocess. Associative arrays → dict. Multiple input files → sys.argv or playbook with_items.`,
+    test: `AWK-specific: Tests must verify FS delimiter handling, NR/NF edge cases (empty lines, trailing fields), BEGIN/END execution order, associative array accumulation, printf format output, and multi-file behavior. Assert numeric vs string comparison behavior.`,
+  },
+  tcl: {
+    convert: `Tcl-specific: Everything is a string — make type coercion explicit in the target. set var value → assignment. puts → print() or debug: msg:. exec → subprocess.run() or ansible.builtin.shell. foreach item $list → for item in list. proc → def or func. lindex/lappend/llength → list methods. string commands → str methods. regexp/regsub → re module. catch {cmd} result → try/except. after ms → time.sleep(ms/1000). Tk (GUI) calls cannot be converted — always TODO. package require → import with TODO if no equivalent.`,
+    test: `Tcl-specific: Tests must verify string coercion edge cases, list operation results, regexp capture group behavior, catch/error propagation, exec command output and return code, and foreach over multi-element lists. Any Tk/GUI proc must be flagged TODO: UNTESTABLE WITHOUT DISPLAY.`,
+  },
+  csh: {
+    convert: `C Shell-specific: csh differs significantly from bash. set var = value → assignment. setenv VAR value → os.environ or Ansible environment: block. foreach var (list) ... end → for loop. while (condition) ... end → while. if (-d path) / if (-f path) → os.path.isdir() / isfile() or ansible.builtin.stat. $status → return code check. $argv → sys.argv or Ansible vars. Aliases → functions or remove. history and job control → cannot be converted, insert TODO. csh arithmetic uses @ var = expr, not $(( )).`,
+    test: `C Shell-specific: Tests must verify environment variable propagation (setenv), exit status ($status) checking, file test operator results (-d, -f, -r, -w, -x), foreach list iteration with edge cases, and argv handling. Assert converted environment variables are visible to child processes.`,
+  },
+};
+
+// ─── callAILite — low-token call for JSON assessment only ─────────
+async function callAILite(system, user) {
+  // Uses a hardcoded low token ceiling — never affected by the user's max_tokens setting.
+  // Called only for the complexity JSON assessment (expected output: ~50-100 tokens).
+  const t0 = Date.now();
+  const LITE_MAX = 300;
+  let result;
+  switch (provider) {
+    case 'anthropic': {
+      const key = document.getElementById('anthropic-key').value.trim();
+      if (!key) throw new Error('No Anthropic API key set.');
+      const model = document.getElementById('anthropic-model').value;
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model, max_tokens: LITE_MAX, stream: false, temperature: 0.1, system, messages: [{ role: 'user', content: user }] })
+      });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error?.message || 'Anthropic error ' + resp.status); }
+      const data = await resp.json();
+      result = data?.content?.[0]?.text || '';
+      break;
+    }
+    case 'openai': {
+      const key = document.getElementById('openai-key').value.trim();
+      if (!key) throw new Error('No OpenAI API key set.');
+      const model = document.getElementById('openai-model').value;
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model, max_tokens: LITE_MAX, stream: false, temperature: 0.1, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] })
+      });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error?.message || 'OpenAI error ' + resp.status); }
+      const data = await resp.json();
+      result = data?.choices?.[0]?.message?.content || '';
+      break;
+    }
+    case 'gemini': {
+      const key = document.getElementById('gemini-key').value.trim();
+      if (!key) throw new Error('No Gemini API key set.');
+      const model = document.getElementById('gemini-model').value;
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key;
+      const resp = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { maxOutputTokens: LITE_MAX, temperature: 0.1 } })
+      });
+      if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e?.error?.message || 'Gemini error ' + resp.status); }
+      const data = await resp.json();
+      result = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      break;
+    }
+    case 'ollama':
+    default: {
+      // Ollama: use regular callAI path — no meaningful overhead difference
+      return callAI(system, user, () => {});
+    }
+  }
+  diagAddLog('INFO', `Complexity check · ${provider} · ${Date.now() - t0}ms`);
+  return result;
+}
+
+// ─── Core processing ──────────────────────────────────────────────
 async function assessComplexity(code, srcLabel, tgtLabel) {
-  const raw = await callAI(
-    'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation.',
-    `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 is trivial, 100 is practically impossible. Issues = specific blockers (max 4). Empty array if none.\n\nScript:\n${code}`,
-    () => {}
+  const raw = await callAILite(
+    SYS_REVIEW,
+    `Assess how cleanly this ${srcLabel} script can be converted to ${tgtLabel}.\n\nRespond ONLY with this JSON object — no markdown, no backticks, no explanation:\n{"score":0-100,"level":"low"|"medium"|"high","label":"Clean"|"Moderate"|"Complex"|"Risky","issues":["..."],"manual_required":true|false}\n\nscore=0 is trivial, 100 is practically impossible. issues = specific blockers only (max 4, empty array if none).\n\nScript:\n${code}`
   );
   try { return JSON.parse(raw.replace(/```json|```/g, '').trim()); }
   catch { return { score: 40, level: 'medium', label: 'Unknown', issues: ['Could not assess complexity automatically.'], manual_required: false }; }
 }
 
 async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
+  const src = document.getElementById('src-lang').value;
   const ext = TGT_EXT[tgt];
   const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
+  const langHints = LANG_HINTS[src] || {};
   let complexity = { score: 0, level: 'low', label: 'Clean', issues: [], manual_required: false };
 
   const estTokens = Math.ceil(code.length / 4);
@@ -1472,37 +1664,134 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
     document.getElementById('warn-banner').className = 'warn-banner';
   }
 
+  // ── Step 1: Documentation ────────────────────────────────────────
   switchTab('docs'); setDot('docs', 'dot-run');
   showStatus('Generating documentation…', true);
-  const docs = await callAI(SYS,
-    `Analyze this ${srcLabel} script and write developer documentation.\n\n1. PURPOSE — what it does\n2. INPUTS — args, env vars, files read\n3. OUTPUTS — what it produces or modifies\n4. LOGIC WALKTHROUGH — key steps\n5. KNOWN RISKS — fragility, assumptions, hardcoded values\n6. MIGRATION NOTES — specific challenges converting to ${tgtLabel}${complexity.issues.length ? '\n\nKnown migration blockers:\n' + complexity.issues.join('\n') : ''}`,
+  const docs = await callAI(SYS_DOC,
+    `Analyze this ${srcLabel} script and write complete developer documentation.\n\n1. PURPOSE — what it does\n2. INPUTS — args, env vars, files read\n3. OUTPUTS — what it produces or modifies\n4. LOGIC WALKTHROUGH — key steps in order\n5. KNOWN RISKS — fragility, assumptions, hardcoded values\n6. MIGRATION NOTES — specific challenges converting to ${tgtLabel}${complexity.issues.length ? '\n\nKnown migration blockers:\n' + complexity.issues.join('\n') : ''}\n\nScript:\n${code}`,
     t => setOutput('docs', t, true));
   setDot('docs', complexity.level === 'high' ? 'dot-warn' : 'dot-done');
   if (baseName) await saveFile(baseName, '_docs.txt', docs);
 
+  // ── Step 2: Test script ──────────────────────────────────────────
   switchTab('tests'); setDot('tests', 'dot-run');
   showStatus('Generating test script…', true);
   const testLang = ['python3', 'go'].includes(tgt) ? tgt : 'bash';
-  const tests = await callAI(SYS,
-    `Write a ${testLang === 'python3' ? 'pytest' : testLang === 'go' ? 'Go test' : 'bash'} test script verifying that a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n\nOutput ONLY raw code. Include tests for each behavior, edge cases, and clear test names.\n\nOriginal:\n${code}`,
-    t => setOutput('tests', t, false));
+  const testPrompt =
+    `Write a ${testLang === 'python3' ? 'pytest' : testLang === 'go' ? 'Go test' : 'bash'} test script that verifies a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n` +
+    (langHints.test ? `\nLanguage-specific test guidance:\n${langHints.test}\n` : '') +
+    `\nRequirements:\n- Test every distinct behavior and edge case\n- Use clear, descriptive test names\n- Include setup and teardown where needed\n- Write the complete script — do not truncate\n\nOutput ONLY raw code, no fences, no preamble.\n\nOriginal script:\n${code}`;
+  const tests = await callAI(SYS_TEST, testPrompt, t => setOutput('tests', t, false));
   setDot('tests', 'dot-done');
   if (baseName) await saveFile(baseName, '_test.' + testExt, tests);
 
+  // ── Step 3: Conversion ───────────────────────────────────────────
   switchTab('converted'); setDot('converted', 'dot-run');
   showStatus('Converting to ' + tgtLabel + '…', true);
-  const manualNote = complexity.manual_required ? '\nIMPORTANT: Insert clear # TODO: MANUAL REVIEW comments where human intervention is required.' : '';
-  const converted = await callAI(SYS,
-    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY raw ${tgtLabel} code, no fences.` +
-    (tgt === 'ansible' ? '\nUse official Ansible modules (not shell/command). Every task needs a descriptive name. Use variables for hardcoded values.' : '') +
-    (tgt === 'python3' ? '\nUse argparse for CLI args. Use subprocess.run() for shell commands.' : '') +
-    (srcLabel.toLowerCase().includes('rexx') ? '\nNote: ADDRESS COMMAND/TSO/CMS/CP calls are z/VM host environment commands. Map to subprocess calls or ansible.builtin.shell. EXECIO maps to file I/O. SAY maps to print()/debug.' : '') +
-    manualNote + `\n\nScript:\n${code}`,
-    t => setOutput('converted', t, false), numCtx);
-  setDot('converted', complexity.manual_required ? 'dot-warn' : 'dot-done');
+  const manualNote = complexity.manual_required
+    ? '\nIMPORTANT: Insert a # TODO: MANUAL REVIEW comment with a specific reason at every location requiring human intervention.'
+    : '';
+  const convertPrompt =
+    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY the converted code — no backtick fences, no preamble, no explanation. Write the complete output, never truncate.\n` +
+    (tgt === 'ansible'
+      ? `\nAnsible rules:\n- Use official Ansible modules, not shell/command, wherever a module exists\n- Every task must have a descriptive name:\n- Use vars: for all hardcoded values\n- Prefer idempotent parameters (state:, creates:, removes:) over imperative calls\n- Add hosts:, gather_facts:, and become: at the top appropriate for the target OS\n- Use block: / rescue: / always: for error handling\n`
+      : '') +
+    (tgt === 'python3' ? '\n- Use argparse for CLI args\n- Use subprocess.run() for shell commands\n' : '') +
+    (langHints.convert ? `\n${langHints.convert}\n` : '') +
+    manualNote +
+    `\n\nOriginal ${srcLabel} script:\n${code}`;
+
+  const converted = await callAI(SYS_CONVERT, convertPrompt, t => setOutput('converted', t, false), numCtx);
+
+  // ── Truncation detection ─────────────────────────────────────────
+  const looksIncomplete = (text) => {
+    const t = text.trimEnd();
+    return t.endsWith(':') || t.endsWith(',') || t.endsWith('(') ||
+           t.endsWith('{') || t.endsWith('[') || t.endsWith('\\') ||
+           t.endsWith('|') || t.endsWith('&&') || t.endsWith('name');
+  };
+  let wasTruncated = false;
+  if (converted && looksIncomplete(converted)) {
+    wasTruncated = true;
+    const warning = '\n\n# ⚠️  WARNING: Output appears truncated. Increase max tokens in Settings and re-run.';
+    setOutput('converted', converted + warning, false);
+    diagAddLog('WARN', 'Conversion output may be truncated — increase max tokens');
+  }
+
+  setDot('converted', (complexity.manual_required || wasTruncated) ? 'dot-warn' : 'dot-done');
   if (baseName) await saveFile(baseName, '.' + ext, converted);
 
   return { docs, tests, converted, complexity };
+}
+
+// ─── PowerShell pre-flight scanner ───────────────────────────────
+// Runs before processOne on any PowerShell source. Scans for WMI/CIM
+// calls and credential patterns, returns structured findings so the
+// UI can surface them before the model ever runs.
+function scanPowerShell(code) {
+  const findings = [];
+
+  // ── WMI / CIM detection ──
+  const wmiMatches = [...code.matchAll(/Get-WmiObject\s+[^\n]*/gi)];
+  const cimMatches = [...code.matchAll(/Get-CimInstance\s+[^\n]*/gi)];
+  if (wmiMatches.length > 0) {
+    const classes = wmiMatches.map(m => {
+      const cls = m[0].match(/-Class\s+(\S+)|Win32_\w+|CIM_\w+/i);
+      return cls ? cls[0].replace(/-Class\s+/i, '') : 'unknown class';
+    }).filter((v, i, a) => a.indexOf(v) === i); // dedupe
+    findings.push({
+      level: 'high',
+      type: 'wmi',
+      msg: `WMI detected (${wmiMatches.length} call${wmiMatches.length > 1 ? 's' : ''}): ${classes.join(', ')} — no direct Ansible module equivalent. Each will be flagged TODO: MANUAL REVIEW in the output.`
+    });
+  }
+  if (cimMatches.length > 0) {
+    const classes = cimMatches.map(m => {
+      const cls = m[0].match(/-ClassName\s+(\S+)|CIM_\w+|Win32_\w+/i);
+      return cls ? cls[0].replace(/-ClassName\s+/i, '') : 'unknown class';
+    }).filter((v, i, a) => a.indexOf(v) === i);
+    findings.push({
+      level: 'high',
+      type: 'cim',
+      msg: `CIM detected (${cimMatches.length} call${cimMatches.length > 1 ? 's' : ''}): ${classes.join(', ')} — no direct Ansible module equivalent. Each will be flagged TODO: MANUAL REVIEW in the output.`
+    });
+  }
+
+  // ── Credential / secret detection ──
+  const credPatterns = [
+    { re: /Get-Credential/gi,                       label: 'Get-Credential' },
+    { re: /\[PSCredential\]/gi,                     label: 'PSCredential type' },
+    { re: /New-Object\s+PSCredential/gi,            label: 'New-Object PSCredential' },
+    { re: /ConvertTo-SecureString\s+-AsPlainText/gi,label: 'ConvertTo-SecureString -AsPlainText (plaintext secret)' },
+    { re: /ConvertFrom-SecureString/gi,             label: 'ConvertFrom-SecureString' },
+  ];
+  const credHits = credPatterns.filter(p => p.re.test(code)).map(p => p.label);
+
+  // Also catch suspicious variable names assigned to string literals
+  const secretVarMatches = [...code.matchAll(/\$(password|passwd|secret|apikey|api_key|token|credential)\s*=\s*["'][^"']+["']/gi)];
+  if (secretVarMatches.length > 0) {
+    credHits.push(`plaintext secret variable${secretVarMatches.length > 1 ? 's' : ''} (${secretVarMatches.map(m => '$' + m[1]).join(', ')})`);
+  }
+
+  if (credHits.length > 0) {
+    findings.push({
+      level: 'high',
+      type: 'credentials',
+      msg: `Credential patterns detected: ${credHits.join('; ')} — these will be replaced with Ansible Vault references and TODO comments. Review the converted output before committing.`
+    });
+  }
+
+  return findings;
+}
+
+// Renders pre-flight findings into the warn banner BEFORE generation starts.
+// Does not block — it informs the user while the run proceeds.
+function showPreflightWarnings(findings) {
+  if (!findings.length) return;
+  const el = document.getElementById('warn-banner');
+  el.className = 'warn-banner show warn-red';
+  const title = '&#9888; Pre-flight scan — issues detected in source script';
+  el.innerHTML = `<strong>${title}</strong>${findings.map(f => `&bull; ${f.msg}`).join('<br>')}`;
 }
 
 // ─── Run ──────────────────────────────────────────────────────────
@@ -1525,6 +1814,16 @@ async function runAll() {
     if (mode === 'single') {
       const code = document.getElementById('code-input').value.trim();
       if (!code) { alert('Paste some legacy code first.'); btn.disabled = false; return; }
+
+      // Pre-flight scan for PowerShell source
+      if (src === 'powershell') {
+        const findings = scanPowerShell(code);
+        if (findings.length) {
+          showPreflightWarnings(findings);
+          findings.forEach(f => diagAddLog('WARN', `Pre-flight: ${f.msg.slice(0, 120)}`));
+        }
+      }
+
       const ctxCheck = await checkOllamaContext(code);
       if (!ctxCheck.ok) { showStatus('Blocked — switch to a cloud provider for this script.', false); btn.disabled = false; return; }
       const result = await processOne(code, srcLabel, tgt, tgtLabel, null, ctxCheck.numCtx);
@@ -1540,6 +1839,15 @@ async function runAll() {
         ['docs', 'tests', 'converted'].forEach(t => { setOutput(t, '', false); setDot(t, ''); });
         document.getElementById('complexity-wrap').style.display = 'none';
         document.getElementById('warn-banner').className = 'warn-banner';
+
+        // Pre-flight scan for PowerShell source
+        if (src === 'powershell') {
+          const findings = scanPowerShell(f.content);
+          if (findings.length) {
+            showPreflightWarnings(findings);
+            findings.forEach(ff => diagAddLog('WARN', `Pre-flight [${f.name}]: ${ff.msg.slice(0, 100)}`));
+          }
+        }
         const ctxCheck = await checkOllamaContext(f.content);
         if (!ctxCheck.ok) { queue[i].status = 'error'; batchResults.push({ name: f.name, complexity: { score: 0, level: 'high', label: 'Too large', issues: ['Script too large for Ollama — switch to a cloud provider'], manual_required: true } }); renderQueue(); continue; }
         try {
