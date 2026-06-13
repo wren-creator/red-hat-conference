@@ -186,6 +186,12 @@
   .hidden { display: none !important; }
   .mt8 { margin-top: 8px; } .gap8 { display: flex; gap: 8px; }
 
+  /* ── Fix panel ── */
+  .fix-panel { display: none; margin-top: 1rem; border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem; background: var(--bg); }
+  .fix-panel.show { display: block; }
+  .fix-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 6px; }
+  .fix-panel textarea { height: 90px; margin-bottom: 8px; }
+
   /* ── Diagnostics panel ── */
   .diag-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
   .diag-panel.open { display: block; }
@@ -625,6 +631,12 @@
       <div class="out-actions" id="acts-converted"></div>
       <div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div>
     </div>
+    <div class="fix-panel" id="fix-panel">
+      <div class="fix-label">&#128295; Fix this</div>
+      <textarea id="fix-input" placeholder="Paste an error or describe the problem — e.g. &quot;ansible-lint fails: freeform is not a valid attribute on task 3&quot; or &quot;the service module uses deprecated syntax, update to FQCN&quot;"></textarea>
+      <button class="btn btn-primary btn-full" id="fix-btn" onclick="runFix()">&#8635; Re-run conversion with fix context</button>
+      <div class="status-row" id="fix-status" style="margin-top:8px;min-height:20px;"></div>
+    </div>
   </div>
 
   <div class="summary-panel card" id="summary-panel">
@@ -660,6 +672,7 @@ const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk'
 
 let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='ollama';
+let lastConversionContext = null;
 
 // Model caches — cleared on provider/URL change so stale lists don't linger
 let cachedOllamaModels = null;
@@ -1390,6 +1403,11 @@ function setOutput(tab, text, prose) {
   const el = document.getElementById('out-' + tab);
   const acts = document.getElementById('acts-' + tab);
   el.className = 'out-box' + (prose ? ' prose' : '');
+  if (tab === 'converted') {
+    const fp = document.getElementById('fix-panel');
+    fp.classList.toggle('show', !!text);
+    if (!text) document.getElementById('fix-status').innerHTML = '';
+  }
   if (!text) {
     el.innerHTML = `<span class="placeholder">${tab === 'docs' ? 'Documentation' : tab === 'tests' ? 'Test script' : 'Converted code'} will appear here.</span>`;
     acts.innerHTML = ''; return;
@@ -1641,6 +1659,7 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   const ext = TGT_EXT[tgt];
   const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
   const langHints = LANG_HINTS[src] || {};
+  lastConversionContext = { code, srcLabel, tgt, tgtLabel, langHints };
   let complexity = { score: 0, level: 'low', label: 'Clean', issues: [], manual_required: false };
 
   const estTokens = Math.ceil(code.length / 4);
@@ -1792,6 +1811,43 @@ function showPreflightWarnings(findings) {
   el.className = 'warn-banner show warn-red';
   const title = '&#9888; Pre-flight scan — issues detected in source script';
   el.innerHTML = `<strong>${title}</strong>${findings.map(f => `&bull; ${f.msg}`).join('<br>')}`;
+}
+
+// ─── Iterative refinement ─────────────────────────────────────────
+async function runFix() {
+  const fixInput = document.getElementById('fix-input').value.trim();
+  if (!fixInput) { alert('Describe the problem or paste an error first.'); return; }
+  if (!lastConversionContext) { alert('Run a full conversion first.'); return; }
+
+  const { code, srcLabel, tgt, tgtLabel, langHints } = lastConversionContext;
+  const currentConverted = document.getElementById('out-converted').textContent;
+
+  const btn = document.getElementById('fix-btn');
+  const statusEl = document.getElementById('fix-status');
+  btn.disabled = true;
+  statusEl.innerHTML = '<div class="spinner"></div><span>Re-running conversion with fix context…</span>';
+  setDot('converted', 'dot-run');
+
+  const fixPrompt =
+    `You previously converted a ${srcLabel} script to ${tgtLabel}. The conversion has a problem that needs fixing.\n\n` +
+    `PROBLEM REPORTED:\n${fixInput}\n\n` +
+    `CURRENT (BROKEN) CONVERSION:\n${currentConverted}\n\n` +
+    `ORIGINAL ${srcLabel.toUpperCase()} SCRIPT:\n${code}\n\n` +
+    (langHints.convert ? `Language-specific rules (still apply):\n${langHints.convert}\n\n` : '') +
+    `Fix the conversion to resolve the reported problem. Output ONLY the corrected code — no backtick fences, no preamble, no explanation. Write the complete output, never truncate.`;
+
+  try {
+    await callAI(SYS_CONVERT, fixPrompt, t => setOutput('converted', t, false));
+    setDot('converted', 'dot-done');
+    statusEl.innerHTML = '<span style="color:var(--text-success);">&#10003; Fix applied — review the updated output above.</span>';
+    diagAddLog('OK', 'Fix applied — re-ran conversion with error context');
+  } catch (e) {
+    setDot('converted', 'dot-warn');
+    statusEl.innerHTML = '<span style="color:var(--text-danger);">Error: ' + e.message + '</span>';
+    diagAddLog('ERR', 'Fix run failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ─── Run ──────────────────────────────────────────────────────────
