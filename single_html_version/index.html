@@ -192,6 +192,14 @@
   .fix-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 6px; }
   .fix-panel textarea { height: 90px; margin-bottom: 8px; }
 
+  /* ── Side-by-side diff view ── */
+  .diff-view { display: none; margin-top: 1px; }
+  .diff-view.show { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media(max-width: 640px) { .diff-view.show { grid-template-columns: 1fr; } }
+  .diff-pane-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); padding: 6px 12px; background: var(--bg2); border: 0.5px solid var(--border); border-bottom: none; border-radius: var(--radius) var(--radius) 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .diff-pane-header span:last-child { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--text3); }
+  .diff-box { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 0 0 var(--radius) var(--radius); padding: 12px; font-family: var(--mono); font-size: 12px; line-height: 1.7; color: var(--text); min-height: 200px; max-height: 480px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+
   /* ── Variable extraction panel ── */
   .vars-wrap { display: none; margin-top: 1rem; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .vars-wrap.show { display: block; }
@@ -653,9 +661,21 @@
     </div>
   </div>
   <div id="panel-converted" class="hidden">
-    <div class="out-wrap">
-      <div class="out-actions" id="acts-converted"></div>
-      <div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div>
+    <div id="converted-single">
+      <div class="out-wrap">
+        <div class="out-actions" id="acts-converted"></div>
+        <div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div>
+      </div>
+    </div>
+    <div class="diff-view" id="diff-view">
+      <div>
+        <div class="diff-pane-header"><span>Original</span><span id="diff-src-lang"></span></div>
+        <div class="diff-box" id="diff-original"></div>
+      </div>
+      <div>
+        <div class="diff-pane-header"><span>Converted</span><span id="diff-tgt-lang"></span></div>
+        <div class="diff-box" id="diff-converted"></div>
+      </div>
     </div>
     <div class="vars-wrap" id="vars-wrap">
       <div class="vars-head">
@@ -1434,6 +1454,27 @@ function switchTab(tab) {
     document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
   });
 }
+function toggleDiffView() {
+  const single = document.getElementById('converted-single');
+  const diffView = document.getElementById('diff-view');
+  const btn = document.getElementById('diff-btn');
+  const opening = !diffView.classList.contains('show');
+  diffView.classList.toggle('show', opening);
+  single.style.display = opening ? 'none' : '';
+  if (btn) btn.textContent = opening ? '☰ Single view' : '⇔ Side-by-side';
+  if (opening) {
+    const src = document.getElementById('src-lang');
+    const tgt = document.getElementById('tgt-lang');
+    document.getElementById('diff-src-lang').textContent = src.options[src.selectedIndex].text;
+    document.getElementById('diff-tgt-lang').textContent = tgt.options[tgt.selectedIndex].text;
+    document.getElementById('diff-original').textContent = document.getElementById('code-input').value;
+    document.getElementById('diff-converted').textContent = document.getElementById('out-converted').textContent;
+  }
+}
+function resetDiffView() {
+  document.getElementById('diff-view').classList.remove('show');
+  document.getElementById('converted-single').style.display = '';
+}
 function setDot(tab, cls) { document.getElementById('ind-' + tab).innerHTML = cls ? `<span class="tab-dot ${cls}"></span>` : ''; }
 function showStatus(msg, spinning) {
   const r = document.getElementById('status-row');
@@ -1469,6 +1510,14 @@ function setOutput(tab, text, prose) {
   clr.style.color = 'var(--text3)';
   clr.onclick = () => setOutput(tab, '', prose);
   acts.appendChild(clr);
+  if (tab === 'converted') {
+    const db = document.createElement('button'); db.id = 'diff-btn'; db.className = 'btn btn-sm';
+    const diffOpen = document.getElementById('diff-view').classList.contains('show');
+    db.textContent = diffOpen ? '☰ Single view' : '⇔ Side-by-side';
+    db.onclick = toggleDiffView;
+    acts.appendChild(db);
+    if (diffOpen) document.getElementById('diff-converted').textContent = text;
+  }
 }
 
 function downloadText(text, filename) {
@@ -2002,6 +2051,7 @@ async function runAll() {
   document.getElementById('summary-panel').classList.remove('show');
   resetIdempotency();
   resetVariables();
+  resetDiffView();
   batchResults = [];
   savePrefs();
 
