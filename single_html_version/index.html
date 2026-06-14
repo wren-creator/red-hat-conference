@@ -192,6 +192,12 @@
   .fix-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 6px; }
   .fix-panel textarea { height: 90px; margin-bottom: 8px; }
 
+  /* ── Idempotency panel ── */
+  .idempotency-wrap { display: none; margin-top: 1rem; padding: 12px 14px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); }
+  .idempotency-wrap.show { display: block; }
+  .ib-flags { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+  .ib-flag { font-size: 12px; color: var(--text-warn); padding: 3px 8px; background: var(--bg-warn); border-radius: 4px; line-height: 1.5; }
+
   /* ── Diagnostics panel ── */
   .diag-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
   .diag-panel.open { display: block; }
@@ -630,6 +636,14 @@
     <div class="out-wrap">
       <div class="out-actions" id="acts-converted"></div>
       <div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div>
+    </div>
+    <div class="idempotency-wrap" id="idempotency-wrap">
+      <div class="cb-header">
+        <span class="cb-label">Idempotency score</span>
+        <span class="cb-score" id="ib-score-label"></span>
+      </div>
+      <div class="cb-track"><div class="cb-fill" id="ib-fill" style="width:0%"></div></div>
+      <div class="ib-flags" id="ib-flags"></div>
     </div>
     <div class="fix-panel" id="fix-panel">
       <div class="fix-label">&#128295; Fix this</div>
@@ -1740,7 +1754,20 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   setDot('converted', (complexity.manual_required || wasTruncated) ? 'dot-warn' : 'dot-done');
   if (baseName) await saveFile(baseName, '.' + ext, converted);
 
-  return { docs, tests, converted, complexity };
+  // ── Step 4: Idempotency scoring (Ansible only) ───────────────────
+  let idempotency = null;
+  if (tgt === 'ansible' && converted && !wasTruncated) {
+    showStatus('Scoring idempotency…', true);
+    try {
+      idempotency = await assessIdempotency(converted);
+      showIdempotency(idempotency.score, idempotency.label, idempotency.level, idempotency.flags);
+      diagAddLog(idempotency.score >= 80 ? 'OK' : 'WARN', `Idempotency: ${idempotency.label} (${idempotency.score}/100)`);
+    } catch (e) {
+      diagAddLog('ERR', 'Idempotency check failed: ' + e.message);
+    }
+  }
+
+  return { docs, tests, converted, complexity, idempotency };
 }
 
 // ─── PowerShell pre-flight scanner ───────────────────────────────
@@ -1813,6 +1840,34 @@ function showPreflightWarnings(findings) {
   el.innerHTML = `<strong>${title}</strong>${findings.map(f => `&bull; ${f.msg}`).join('<br>')}`;
 }
 
+// ─── Idempotency scoring ──────────────────────────────────────────
+async function assessIdempotency(convertedCode) {
+  const raw = await callAILite(
+    SYS_REVIEW,
+    `Assess the idempotency of this Ansible playbook. Score how safely it can be run multiple times without unintended side effects.\n\nRespond ONLY with this JSON — no markdown, no backticks:\n{"score":0-100,"level":"idempotent"|"mostly"|"partial"|"imperative","label":"Fully Idempotent"|"Mostly Idempotent"|"Partial"|"Imperative","flags":["task name or description: reason it is not idempotent"]}\n\nscore=100 means every task is fully idempotent. score=0 means fully imperative (always causes change). flags = specific tasks that are not idempotent (max 5, empty array if none).\n\nPlaybook:\n${convertedCode}`
+  );
+  try { return JSON.parse(raw.replace(/```json|```/g, '').trim()); }
+  catch { return { score: 50, level: 'partial', label: 'Unknown', flags: ['Could not assess idempotency automatically.'] }; }
+}
+
+function showIdempotency(score, label, level, flags) {
+  const wrap = document.getElementById('idempotency-wrap');
+  wrap.classList.add('show');
+  document.getElementById('ib-score-label').textContent = `${label} (${score}/100)`;
+  const fill = document.getElementById('ib-fill');
+  fill.style.width = score + '%';
+  fill.className = 'cb-fill ' + (score >= 80 ? 'fill-green' : score >= 50 ? 'fill-amber' : 'fill-red');
+  const flagsEl = document.getElementById('ib-flags');
+  flagsEl.innerHTML = (flags && flags.length)
+    ? flags.map(f => `<div class="ib-flag">&#9888; ${f}</div>`).join('')
+    : '';
+}
+
+function resetIdempotency() {
+  document.getElementById('idempotency-wrap').classList.remove('show');
+  document.getElementById('ib-flags').innerHTML = '';
+}
+
 // ─── Iterative refinement ─────────────────────────────────────────
 async function runFix() {
   const fixInput = document.getElementById('fix-input').value.trim();
@@ -1863,6 +1918,7 @@ async function runAll() {
   document.getElementById('warn-banner').className = 'warn-banner';
   document.getElementById('ctx-banner').className = 'ctx-banner';
   document.getElementById('summary-panel').classList.remove('show');
+  resetIdempotency();
   batchResults = [];
   savePrefs();
 
