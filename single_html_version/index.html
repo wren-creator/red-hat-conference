@@ -278,6 +278,19 @@
   .diag-export:hover { color: var(--text); }
   .dc-pill { font-size: 10px; padding: 2px 8px; border-radius: 100px; }
   .diag-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin: 1rem 0 8px; }
+
+  /* ── History panel ── */
+  .history-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+  .history-panel.open { display: block; }
+  .history-title { font-size: 13px; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+  .history-empty { text-align: center; padding: 1.5rem 1rem; color: var(--text3); font-size: 13px; }
+  .history-list { display: flex; flex-direction: column; gap: 6px; }
+  .history-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); }
+  .history-ts { color: var(--text3); font-size: 10px; font-family: var(--mono); white-space: nowrap; }
+  .history-meta { flex: 1; min-width: 0; }
+  .history-langs { font-size: 12px; font-weight: 600; color: var(--text); }
+  .history-preview { font-size: 11px; color: var(--text3); font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-badge { font-size: 10px; padding: 2px 7px; border-radius: 100px; background: var(--bg3); color: var(--text3); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -298,6 +311,10 @@
       <button class="btn btn-sm" onclick="toggleDiag()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Diagnostics
+      </button>
+      <button class="btn btn-sm" id="history-btn" onclick="toggleHistory()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        History
       </button>
     </div>
   </div>
@@ -544,6 +561,15 @@
     </div>
   </div>
 
+  <!-- History panel -->
+  <div class="history-panel" id="history-panel">
+    <div class="history-title">
+      &#128336; Conversion history
+      <button class="diag-export" onclick="clearHistory()">Clear</button>
+    </div>
+    <div id="history-content"><div class="history-empty">No conversions yet this session.</div></div>
+  </div>
+
   <!-- Main card -->
   <div class="card">
     <div class="provider-chip" id="provider-chip">
@@ -734,6 +760,7 @@ const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk'
 let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='ollama';
 let lastConversionContext = null;
+let conversionHistory = [], historySeq = 0;
 
 // Model caches — cleared on provider/URL change so stale lists don't linger
 let cachedOllamaModels = null;
@@ -2036,6 +2063,67 @@ async function runFix() {
   }
 }
 
+// ─── Conversion history ───────────────────────────────────────────
+function toggleHistory() {
+  document.getElementById('history-panel').classList.toggle('open');
+}
+
+function saveToHistory(entry) {
+  historySeq++;
+  const ts = new Date().toTimeString().slice(0, 8);
+  const preview = (entry.code || '').trim().split('\n')[0].slice(0, 55);
+  conversionHistory.unshift({ id: historySeq, ts, preview, ...entry });
+  if (conversionHistory.length > 10) conversionHistory.pop();
+  renderHistory();
+  const btn = document.getElementById('history-btn');
+  if (btn) btn.innerHTML = btn.innerHTML.replace(/\s*\(\d+\)/, '') + ` (${conversionHistory.length})`;
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  if (!conversionHistory.length) {
+    el.innerHTML = '<div class="history-empty">No conversions yet this session.</div>';
+    return;
+  }
+  const lvlClass = { low: 'risk-clean', medium: 'risk-partial', high: 'risk-manual' };
+  el.innerHTML = '<div class="history-list">' + conversionHistory.map(h =>
+    `<div class="history-item">
+      <span class="history-ts">${h.ts}</span>
+      <div class="history-meta">
+        <div class="history-langs">${escHtml(h.srcLabel)} &rarr; ${escHtml(h.tgtLabel)}</div>
+        <div class="history-preview">${escHtml(h.preview)}</div>
+      </div>
+      <span class="history-badge ${lvlClass[h.complexity?.level] || ''}">${h.complexity?.label || '—'}</span>
+      <button class="btn btn-sm" onclick="restoreFromHistory(${h.id})">Restore</button>
+    </div>`
+  ).join('') + '</div>';
+}
+
+function restoreFromHistory(id) {
+  const h = conversionHistory.find(e => e.id === id);
+  if (!h) return;
+  setOutput('docs', h.docs || '', true);
+  setOutput('tests', h.tests || '', false);
+  setOutput('converted', h.converted || '', false);
+  if (h.complexity) {
+    showComplexity(h.complexity.score, `${h.complexity.label} (${h.complexity.score}/100)`, h.complexity.level);
+    showWarning(h.complexity.level, h.complexity.issues);
+    document.getElementById('complexity-wrap').style.display = '';
+  }
+  document.getElementById('history-panel').classList.remove('open');
+  switchTab('docs');
+  showStatus(`Restored: ${h.srcLabel} → ${h.tgtLabel} (${h.ts})`, false);
+  diagAddLog('INFO', `History restored: entry ${h.id} — ${h.srcLabel} → ${h.tgtLabel}`);
+}
+
+function clearHistory() {
+  conversionHistory = [];
+  historySeq = 0;
+  renderHistory();
+  const btn = document.getElementById('history-btn');
+  if (btn) btn.innerHTML = btn.innerHTML.replace(/\s*\(\d+\)/, '');
+}
+
 // ─── Run ──────────────────────────────────────────────────────────
 async function runAll() {
   const src = document.getElementById('src-lang').value;
@@ -2072,6 +2160,7 @@ async function runAll() {
       const ctxCheck = await checkOllamaContext(code);
       if (!ctxCheck.ok) { showStatus('Blocked — switch to a cloud provider for this script.', false); btn.disabled = false; return; }
       const result = await processOne(code, srcLabel, tgt, tgtLabel, null, ctxCheck.numCtx);
+      saveToHistory({ code, srcLabel, tgtLabel, ...result });
       showStatus(result.complexity.manual_required ? 'Done — manual review required (see warnings above).' : 'Done.', false);
       switchTab('docs');
     } else {
@@ -2099,6 +2188,7 @@ async function runAll() {
           const base = f.name.replace(/\.[^.]+$/, '');
           const result = await processOne(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx);
           queue[i].status = result.complexity.level === 'high' ? 'warn' : 'done';
+          saveToHistory({ code: f.content, srcLabel, tgtLabel, ...result });
           batchResults.push({ name: f.name, ...result });
         } catch (e) { queue[i].status = 'error'; batchResults.push({ name: f.name, complexity: { score: 0, level: 'high', label: 'Error', issues: [e.message], manual_required: true } }); }
         renderQueue();

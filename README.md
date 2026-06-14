@@ -220,14 +220,26 @@ Extended documentation lives in the `docs/` directory:
 
 ## Roadmap
 
-See `docs/ROADMAP.md` for the full prioritized list. Near-term items:
+See `docs/ROADMAP.md` for the full prioritized list.
 
-- [ ] Annotation mode — toggleable inline comments explaining each conversion decision
-- [ ] Side-by-side diff view — original script left, converted output right
-- [ ] Conversion history — session-scoped log, flip back to previous results without re-running
-- [ ] Script chunking — split 1000+ line scripts into logical sections, convert each independently, stitch output
-- [ ] Ansible role scaffolding — output a proper role directory structure for complex scripts
-- [ ] Sovereign AI configuration guide with recommended local models
+### Completed this sprint
+
+- [x] **WMI/CIM detection** — real-time pre-flight scan flags `Get-WmiObject` / `Get-CimInstance` before conversion runs
+- [x] **Windows credential handling** — detects `Get-Credential`, `PSCredential`, `ConvertTo-SecureString`; maps to Ansible Vault references with setup TODOs
+- [x] **Annotation mode** — toggleable inline comments in converted output explaining each mapping decision
+- [x] **Side-by-side diff view** — original script left, converted output right; toggle between single and split pane
+- [x] **Iterative refinement** — "Fix this" panel below output; paste an error or describe a problem and re-run with context injected
+- [x] **Variable extraction pass** — dedicated pre-conversion step identifying hardcoded values and proposing a naming scheme; names flow into the conversion prompt
+- [x] **Idempotency scoring** — post-conversion assessment of how idempotent the Ansible output is; each imperative task flagged by name, color-coded 0–100
+- [x] **Conversion history** — session-scoped log of every script processed; flip back to any previous result without re-running
+
+### Up next
+
+- [ ] **Script chunking** — split 1000+ line scripts into logical sections, convert each independently, stitch output
+- [ ] **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for complex scripts
+- [ ] **Test coverage report** — map each original behavior to a generated test; flag any behaviors with no coverage
+- [ ] **Confidence scoring per task** — green/amber/red indicator per converted Ansible task based on mapping directness
+- [ ] **Sovereign AI mode** — first-class offline configuration for air-gapped environments with local model recommendations
 
 ---
 
