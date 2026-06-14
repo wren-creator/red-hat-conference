@@ -77,6 +77,26 @@ Before any PowerShell script is processed, it is scanned for patterns with no cl
 **Iterative refinement**
 After conversion, a **Fix this** panel appears below the output. Paste an error message or describe a problem (e.g. `"ansible-lint fails: freeform is not a valid attribute on task 3"`), click re-run, and the conversion is repeated with the error context injected into the prompt. No need to start over from scratch.
 
+**Test coverage report**
+After the test script is generated, a coverage panel maps each distinct behavior in the original script to the generated tests. Green = covered, red = not covered. Shows covered/total count in the panel header so you can see at a glance whether the test suite has gaps.
+
+**Task confidence scoring**
+Every Ansible task in the converted output gets a green/amber/red confidence badge based on how directly it mapped from the source language. Low-confidence tasks — where no clean module exists or behavior is ambiguous — are named explicitly so engineers know exactly what needs manual review before shipping.
+
+**ansible-lint validation**
+After conversion, a validate panel appears with two modes depending on how you're running the app:
+- **Live server mode** (via `launch.py`): click "Run ansible-lint" and violations appear inline — no terminal needed. `launch.py` runs the linter locally, parses JSON output, and returns structured results with severity, rule ID, and line number.
+- **Copy-paste mode** (raw file open): download `playbook.yml`, run locally, paste the output back and the app renders structured violation rows.
+
+Install ansible-lint to use the live mode:
+```bash
+pip install ansible-lint ansible-core
+python3 single_html_version/launch.py
+```
+
+**Sovereign AI mode**
+A toggle in Settings locks the entire app to local Ollama — all cloud provider fields are hidden and the provider select is disabled. A green banner confirms no data is leaving the machine. Includes a model recommendation panel with one-click `ollama pull` copy buttons for the four best offline models. A pre-flight check before every run confirms Ollama is responding and the selected model is available. Designed for air-gapped networks, regulated industries, and demo environments with no internet connection.
+
 **Truncation detection**
 If the model stops generating mid-output, the tool detects common truncation signatures and appends a visible warning rather than silently delivering incomplete code.
 
@@ -224,7 +244,7 @@ Extended documentation lives in the `docs/` directory:
 
 See `docs/ROADMAP.md` for the full prioritized list.
 
-### Completed this sprint
+### Completed (13 of 18 roadmap items)
 
 - [x] **WMI/CIM detection** — real-time pre-flight scan flags `Get-WmiObject` / `Get-CimInstance` before conversion runs
 - [x] **Windows credential handling** — detects `Get-Credential`, `PSCredential`, `ConvertTo-SecureString`; maps to Ansible Vault references with setup TODOs
@@ -234,14 +254,19 @@ See `docs/ROADMAP.md` for the full prioritized list.
 - [x] **Variable extraction pass** — dedicated pre-conversion step identifying hardcoded values and proposing a naming scheme; names flow into the conversion prompt
 - [x] **Idempotency scoring** — post-conversion assessment of how idempotent the Ansible output is; each imperative task flagged by name, color-coded 0–100
 - [x] **Conversion history** — session-scoped log of every script processed; flip back to any previous result without re-running
+- [x] **Test coverage report** — maps each behavior in the original script to the generated tests; shows covered/total count
+- [x] **Task confidence scoring** — green/amber/red badge per Ansible task based on how directly it mapped from the source language
+- [x] **ansible-lint validation** — live server mode via `launch.py` runs linting inline; copy-paste mode for raw file use; both render structured violation rows
+- [x] **Sovereign AI mode** — Settings toggle locks to local Ollama; model recommendations with one-click pull commands; pre-flight check before every run
+- [x] **Codebase restructure** — split from a 2,599-line monolith into `index.html` (markup), `style.css`, and `app.js` for maintainability
 
 ### Up next
 
-- [ ] **Script chunking** — split 1000+ line scripts into logical sections, convert each independently, stitch output
 - [ ] **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for complex scripts
-- [ ] **Test coverage report** — map each original behavior to a generated test; flag any behaviors with no coverage
-- [ ] **Confidence scoring per task** — green/amber/red indicator per converted Ansible task based on mapping directness
-- [ ] **Sovereign AI mode** — first-class offline configuration for air-gapped environments with local model recommendations
+- [ ] **Script chunking** — split 1000+ line scripts into logical sections, convert each independently, stitch output
+- [ ] **Export to ZIP / PR** — bundle converted file, test script, and docs for download or push directly to a GitHub branch
+- [ ] **Multi-file dependency awareness** — detect sourced scripts during batch processing and convert them together
+- [ ] **Before/after parity check** and **test execution harness** — require a script execution environment; planned for the Node.js version
 
 ---
 
