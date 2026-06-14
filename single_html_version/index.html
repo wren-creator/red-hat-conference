@@ -192,6 +192,18 @@
   .fix-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 6px; }
   .fix-panel textarea { height: 90px; margin-bottom: 8px; }
 
+  /* ── Variable extraction panel ── */
+  .vars-wrap { display: none; margin-top: 1rem; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .vars-wrap.show { display: block; }
+  .vars-head { padding: 8px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); border-bottom: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .vars-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .vars-table td { padding: 6px 14px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .vars-table tr:last-child td { border-bottom: none; }
+  .vt-val  { font-family: var(--mono); color: var(--text2); font-size: 11.5px; max-width: 220px; word-break: break-all; }
+  .vt-arr  { color: var(--text3); padding: 6px 4px !important; white-space: nowrap; }
+  .vt-name { font-family: var(--mono); color: var(--text); font-size: 11.5px; }
+  .vt-type { font-size: 10px; color: var(--text3); margin-left: 6px; }
+
   /* ── Idempotency panel ── */
   .idempotency-wrap { display: none; margin-top: 1rem; padding: 12px 14px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); }
   .idempotency-wrap.show { display: block; }
@@ -636,6 +648,13 @@
     <div class="out-wrap">
       <div class="out-actions" id="acts-converted"></div>
       <div class="out-box" id="out-converted"><span class="placeholder">Converted code will appear here after generation.</span></div>
+    </div>
+    <div class="vars-wrap" id="vars-wrap">
+      <div class="vars-head">
+        <span>&#128221; Extracted variables</span>
+        <span id="vars-count" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;"></span>
+      </div>
+      <table class="vars-table" id="vars-table"></table>
     </div>
     <div class="idempotency-wrap" id="idempotency-wrap">
       <div class="cb-header">
@@ -1718,8 +1737,23 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   setDot('tests', 'dot-done');
   if (baseName) await saveFile(baseName, '_test.' + testExt, tests);
 
-  // ── Step 3: Conversion ───────────────────────────────────────────
+  // ── Step 2.5: Variable extraction ───────────────────────────────
   switchTab('converted'); setDot('converted', 'dot-run');
+  showStatus('Extracting variables…', true);
+  let extractedVars = [];
+  try {
+    extractedVars = await extractVariables(code, srcLabel);
+    showVariables(extractedVars);
+    diagAddLog('INFO', `Variable extraction: ${extractedVars.length} variable(s) identified`);
+  } catch (e) {
+    diagAddLog('WARN', 'Variable extraction failed: ' + e.message);
+  }
+  const varHint = extractedVars.length
+    ? `\nProposed variable names for hardcoded values (use these in vars: or as named constants):\n` +
+      extractedVars.map(v => `  ${JSON.stringify(v.value)} → ${v.name} (${v.type})`).join('\n') + '\n'
+    : '';
+
+  // ── Step 3: Conversion ───────────────────────────────────────────
   showStatus('Converting to ' + tgtLabel + '…', true);
   const manualNote = complexity.manual_required
     ? '\nIMPORTANT: Insert a # TODO: MANUAL REVIEW comment with a specific reason at every location requiring human intervention.'
@@ -1731,6 +1765,7 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
       : '') +
     (tgt === 'python3' ? '\n- Use argparse for CLI args\n- Use subprocess.run() for shell commands\n' : '') +
     (langHints.convert ? `\n${langHints.convert}\n` : '') +
+    varHint +
     manualNote +
     `\n\nOriginal ${srcLabel} script:\n${code}`;
 
@@ -1840,6 +1875,39 @@ function showPreflightWarnings(findings) {
   el.innerHTML = `<strong>${title}</strong>${findings.map(f => `&bull; ${f.msg}`).join('<br>')}`;
 }
 
+// ─── Variable extraction ──────────────────────────────────────────
+async function extractVariables(code, srcLabel) {
+  const raw = await callAILite(
+    SYS_REVIEW,
+    `Identify hardcoded values in this ${srcLabel} script that should become variables in the modernized output.\n\nRespond ONLY with JSON — no markdown, no backticks:\n{"variables":[{"value":"exact hardcoded value","name":"proposed_var_name","type":"path|port|hostname|service|credential|url|timeout|other"}]}\n\nMax 8 variables. Only include values worth parameterizing — skip trivial literals like loop counters or boolean flags. Empty array if none.\n\nScript:\n${code}`
+  );
+  try {
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    return Array.isArray(parsed.variables) ? parsed.variables : [];
+  } catch { return []; }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showVariables(vars) {
+  const wrap = document.getElementById('vars-wrap');
+  if (!vars || !vars.length) { wrap.classList.remove('show'); return; }
+  wrap.classList.add('show');
+  document.getElementById('vars-count').textContent = vars.length + ' found';
+  document.getElementById('vars-table').innerHTML = vars.map(v =>
+    `<tr><td class="vt-val">${escHtml(v.value)}</td><td class="vt-arr">→</td>` +
+    `<td class="vt-name">${escHtml(v.name)}<span class="vt-type">${escHtml(v.type)}</span></td></tr>`
+  ).join('');
+}
+
+function resetVariables() {
+  document.getElementById('vars-wrap').classList.remove('show');
+  document.getElementById('vars-table').innerHTML = '';
+  document.getElementById('vars-count').textContent = '';
+}
+
 // ─── Idempotency scoring ──────────────────────────────────────────
 async function assessIdempotency(convertedCode) {
   const raw = await callAILite(
@@ -1919,6 +1987,7 @@ async function runAll() {
   document.getElementById('ctx-banner').className = 'ctx-banner';
   document.getElementById('summary-panel').classList.remove('show');
   resetIdempotency();
+  resetVariables();
   batchResults = [];
   savePrefs();
 

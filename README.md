@@ -1,4 +1,4 @@
-![Status](https://img.shields.io/badge/status-work%20in%20progress-yellow)
+![Status](https://img.shields.io/badge/status-active%20development-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-18%2B-green)
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
@@ -8,6 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20zLinux-lightgrey)
 ![Conference](https://img.shields.io/badge/Red%20Hat%20Conference-2026%20Atlanta-red)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
+
 # Legacy Code Modernizer — Rosetta Stone
 ### Modernizing Legacy Automation With AI + Ansible + Ollama
 
@@ -35,10 +36,10 @@ This repository contains all materials used for the **2026 Red Hat Conference in
 
 ## What It Does
 
-Modern enterprises still run thousands of aging shell scripts, cron jobs, and procedural automations. The Rosetta Stone pipeline processes them in four steps — in sequence, not just conversion:
+Modern enterprises still run thousands of aging shell scripts, cron jobs, and procedural automations. The Rosetta Stone pipeline processes them in six steps — in sequence, not just conversion:
 
 ```
-① Document  →  ② Review  →  ③ Test  →  ④ Convert
+① Document  →  ② Review  →  ③ Test  →  ④ Extract Vars  →  ⑤ Convert  →  ⑥ Score
 ```
 
 **① Document the legacy code first**
@@ -50,8 +51,32 @@ Every script is scored 0–100 for conversion complexity. Specific blockers are 
 **③ Generate a test script**
 A test script is generated based on the *original* script's behavior and operations. The goal: prove that the modernized version does exactly what the old one did. This was the missing piece from the Summit demo, and the most important addition.
 
-**④ Convert to the target language**
-Idiomatic conversion to modern formats — with `# TODO: MANUAL REVIEW` markers inserted wherever automation hits its limits. No silent failures, no pretending a hard problem is easy.
+**④ Extract and name variables**
+Before conversion begins, all hardcoded values are identified and a proposed variable naming scheme is generated — paths, ports, hostnames, service names, credentials, URLs. These names are injected directly into the conversion prompt so the output uses consistent, meaningful variable names from the start rather than leaving magic strings scattered through the playbook.
+
+**⑤ Convert to the target language**
+Idiomatic conversion to modern formats — with `# TODO: MANUAL REVIEW` markers inserted wherever automation hits its limits. No silent failures, no pretending a hard problem is easy. Variable names from Step ④ are used throughout.
+
+**⑥ Score idempotency** *(Ansible target only)*
+After conversion, the playbook is assessed for idempotency: can it be safely run multiple times without unintended side effects? Each task that remains imperative is flagged by name with a specific reason. Score 0–100, color-coded green/amber/red.
+
+---
+
+## Pipeline Features
+
+Beyond the core six steps, the pipeline includes several safety and quality features:
+
+**PowerShell pre-flight scanning**
+Before any PowerShell script is processed, it is scanned for patterns with no clean Ansible equivalent:
+- `Get-WmiObject` / `Get-CimInstance` — flagged with the specific WMI class name; each occurrence generates a `TODO: MANUAL REVIEW` in the output
+- `Get-Credential`, `[PSCredential]`, `ConvertTo-SecureString -AsPlainText` — credential patterns are never passed through as plaintext; each is replaced with an Ansible Vault reference and a `TODO` explaining the required vault setup
+- Warnings appear in real time as you paste — before you click Run
+
+**Iterative refinement**
+After conversion, a **Fix this** panel appears below the output. Paste an error message or describe a problem (e.g. `"ansible-lint fails: freeform is not a valid attribute on task 3"`), click re-run, and the conversion is repeated with the error context injected into the prompt. No need to start over from scratch.
+
+**Truncation detection**
+If the model stops generating mid-output, the tool detects common truncation signatures and appends a visible warning rather than silently delivering incomplete code.
 
 ---
 
@@ -61,6 +86,7 @@ Idiomatic conversion to modern formats — with `# TODO: MANUAL REVIEW` markers 
 | Language | Status |
 |---|---|
 | Bash / Shell | ✅ Tested |
+| PowerShell | ✅ Tested |
 | Perl | ✅ Tested |
 | AWK | ✅ Tested |
 | Tcl | ✅ Tested |
@@ -88,9 +114,9 @@ Idiomatic conversion to modern formats — with `# TODO: MANUAL REVIEW` markers 
 A single self-contained HTML file. Open in Chrome or Edge, enter your API key in the Settings panel, and go. Full File System Access API support for directory picking and output saving. API key is held in memory only — never written to disk.
 
 ```
-rosetta-stone/
-  rosetta-stone.html   ← entire app in one file
-  launch.py            ← optional Python server (zero pip installs)
+single_html_version/
+  index.html     ← entire app in one file
+  launch.py      ← optional Python server (zero pip installs)
   README.txt
 ```
 
@@ -98,7 +124,7 @@ rosetta-stone/
 A proper Express server that proxies all AI calls server-side. API key lives in `.env` and never touches the browser. Works in every browser including Safari and Firefox. Supports server-side directory scanning and file writing.
 
 ```
-rosetta-stone-node/
+node.js_version/
   server.js            ← Express server
   public/index.html    ← frontend
   package.json
@@ -115,28 +141,32 @@ npm start              # → http://localhost:3000
 
 ## AI Provider Options
 
-### Anthropic API
-Fastest results, best quality on complex legacy code. Requires an API key from [console.anthropic.com](https://console.anthropic.com). Set it in `.env` (Node version) or the Settings panel (browser version).
+The app supports four providers, switchable from the Settings panel with no code changes required.
 
-### Ollama (local)
-Run everything locally with no API costs. Pull any supported code model:
+### Ollama (local / sovereign)
+Run everything locally with no API costs and no data leaving your network. Pull any supported code model:
 
 ```bash
 ollama pull qwen2.5-coder
 ollama serve
 ```
 
-### Sovereign AI — Coming Soon
+Recommended for air-gapped environments, regulated industries, and cost-sensitive teams. The Ollama ModelFile in this repo is purpose-built for legacy-to-Ansible conversion.
 
-> **This is next on the roadmap.**
->
-> Not every team can absorb large token costs, and not every environment can send code to an external API — air-gapped systems, regulated industries, organizations with strict data residency requirements. A sovereign AI configuration using locally-run models is being built out as a first-class option, not an afterthought. The Ollama ModelFile infrastructure in this repo is the foundation for that work.
+### Anthropic Claude
+Fastest results, best quality on complex legacy code. Requires an API key from [console.anthropic.com](https://console.anthropic.com). Up to 200K token context window — handles large scripts that exceed local model limits.
+
+### OpenAI GPT
+Supports GPT-4o and GPT-4 Turbo via API key. Models are fetched dynamically from the OpenAI API after key entry. 128K context window.
+
+### Google Gemini
+Supports Gemini 1.5 Pro and 2.0 Flash via API key. Up to 1M token context — best option for very large scripts. Models are fetched dynamically.
 
 ---
 
 ## Ollama ModelFiles
 
-The `model-files/` directory contains custom Ollama ModelFiles used in the live demos. These models are purpose-built for:
+The `Model-files/` directory contains custom Ollama ModelFiles used in the live demos. These models are purpose-built for:
 
 - Legacy script analysis
 - YAML and structured data generation
@@ -147,7 +177,7 @@ The `model-files/` directory contains custom Ollama ModelFiles used in the live 
 **Build and run the legacy-to-Ansible model:**
 
 ```bash
-ollama create legacy2ansible -f model-files/legacy2ansible.modelfile
+ollama create legacy2ansible -f Model-files/legacy2ansible.modelfile
 ollama run legacy2ansible
 ```
 
@@ -161,7 +191,20 @@ The `scripts/` directory contains supporting tooling:
 |---|---|
 | `OpenAI-compatible-one-line.sh` | Single-command Bash → Python conversion via any OpenAI-compatible endpoint |
 | `modernizer-validator.sh` | Batch conversion pipeline with `ansible-lint` validation |
-| `one-liner-ollama` | Quick Ollama-based conversion one-liner |
+
+---
+
+## Documentation
+
+Extended documentation lives in the `docs/` directory:
+
+| File | Contents |
+|---|---|
+| `HARDWARE.md` | Hardware sizing guide and model pricing for self-hosted deployments |
+| `TROUBLESHOOTING.md` | Diagnostic steps for common Ollama, CORS, and provider connection issues |
+| `ROADMAP.md` | Full feature roadmap with priority order and integration effort ratings |
+| `SECURITY.md` | Security policy and responsible disclosure |
+| `CONTACT.md` | How to reach the maintainer |
 
 ---
 
@@ -171,18 +214,20 @@ The `scripts/` directory contains supporting tooling:
 - **Complex Bash** with heavy use of `eval`, dynamic variable names, or process substitution may produce incomplete conversions — the complexity scorer will flag these.
 - **Ansible conversion** works best for infrastructure automation scripts. Application-layer logic (complex string processing, algorithmic code) maps poorly to Ansible's declarative model and will generate `TODO` markers accordingly.
 - **Test script generation** is based on behavioral inference from the source code, not execution. Generated tests should be reviewed and run in a safe environment before being used to gate any deployment.
-- The **sovereign AI option** is not yet implemented. Ollama support is available but the simplified configuration and model recommendations for cost-sensitive environments are still being built out.
+- **Large scripts** (1000+ lines) require a cloud provider. Local Ollama models have limited context windows. Script chunking with stitched output is on the roadmap but not yet implemented.
 
 ---
 
 ## Roadmap
 
-- [ ] Validated COBOL support with copybook handling
-- [ ] Validated REXX support with host command environment awareness  
+See `docs/ROADMAP.md` for the full prioritized list. Near-term items:
+
+- [ ] Annotation mode — toggleable inline comments explaining each conversion decision
+- [ ] Side-by-side diff view — original script left, converted output right
+- [ ] Conversion history — session-scoped log, flip back to previous results without re-running
+- [ ] Script chunking — split 1000+ line scripts into logical sections, convert each independently, stitch output
+- [ ] Ansible role scaffolding — output a proper role directory structure for complex scripts
 - [ ] Sovereign AI configuration guide with recommended local models
-- [ ] Simplified single-command setup for offline/air-gapped environments
-- [ ] Extended test script generation with actual execution harness
-- [ ] Additional legacy languages (JCL, SAS, RPG — under consideration)
 
 ---
 
