@@ -445,6 +445,33 @@
       </div>
       <table class="confidence-table" id="confidence-table"></table>
     </div>
+    <div class="validate-wrap" id="validate-wrap">
+      <div class="validate-head">
+        <span>&#9989; ansible-lint validation</span>
+        <span id="vl-server-badge" class="vl-server-badge local">copy-paste mode</span>
+      </div>
+      <div class="validate-body">
+        <div class="vl-actions">
+          <button class="btn btn-sm" onclick="downloadPlaybook()">&#8615; Download playbook.yml</button>
+          <button class="btn btn-sm btn-primary" id="vl-run-btn" onclick="runValidate()" style="display:none;">&#9654; Run ansible-lint</button>
+        </div>
+        <div id="vl-cmd-section">
+          <div class="vl-cmd-label">Install ansible-lint (if not already installed)</div>
+          <div class="vl-cmd-block">pip install ansible-lint ansible-core</div>
+          <div class="vl-cmd-label" style="margin-top:8px;">Run against the downloaded file</div>
+          <div class="vl-cmd-block">ansible-lint ~/Downloads/playbook.yml</div>
+          <div class="vl-cmd-label" style="margin-top:8px;">Or save and lint in one step</div>
+          <div class="vl-cmd-block" id="vl-oneliner">ansible-lint /tmp/rosetta_playbook.yml</div>
+        </div>
+        <div class="vl-paste" id="vl-paste-section">
+          <div class="vl-paste-label">Paste ansible-lint output here to see structured results:</div>
+          <textarea id="vl-paste-input" placeholder="Paste the terminal output from ansible-lint here…"></textarea>
+          <button class="btn btn-sm" onclick="parseRawLintOutput()">Parse output</button>
+        </div>
+        <div id="vl-results-area"></div>
+      </div>
+    </div>
+
     <div class="fix-panel" id="fix-panel">
       <div class="fix-label">&#128295; Fix this</div>
       <textarea id="fix-input" placeholder="Paste an error or describe the problem — e.g. &quot;ansible-lint fails: freeform is not a valid attribute on task 3&quot; or &quot;the service module uses deprecated syntax, update to FQCN&quot;"></textarea>

@@ -18,6 +18,7 @@ let mode='single', queue=[], outputDirHandle=null, batchResults=[];
 let provider='ollama';
 let lastConversionContext = null;
 let conversionHistory = [], historySeq = 0;
+let launchPyAvailable = false;
 
 // Model caches — cleared on provider/URL change so stale lists don't linger
 let cachedOllamaModels = null;
@@ -36,6 +37,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadSample();
   renderOllamaCorsCmd();
   setTimeout(() => diagAddLog('INFO', 'Page loaded · provider: ' + provider), 150);
+  probeLaunchPy();
 });
 
 // ─── Settings ─────────────────────────────────────────────────────
@@ -1171,6 +1173,12 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
     } catch (e) {
       diagAddLog('WARN', 'Confidence scoring failed: ' + e.message);
     }
+
+    // ── Step 4.2: Show validate panel ─────────────────────────────
+    showValidatePanel(converted);
+    diagAddLog('INFO', launchPyAvailable
+      ? 'ansible-lint validation ready — click Run ansible-lint in the panel'
+      : 'ansible-lint validation ready — download playbook.yml and run locally');
   }
 
   return { docs, tests, converted, complexity, idempotency, confidence, coverage };
@@ -1377,6 +1385,183 @@ function resetCoverage() {
   document.getElementById('coverage-summary').textContent = '';
 }
 
+// ─── Ansible-lint validation ──────────────────────────────────────
+async function probeLaunchPy() {
+  try {
+    const res = await fetch('/health', { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.service === 'rosetta-stone') {
+        launchPyAvailable = true;
+        diagAddLog('OK', 'launch.py detected — ansible-lint validation available');
+      }
+    }
+  } catch { /* not running, stay in copy-paste mode */ }
+}
+
+function showValidatePanel(convertedCode) {
+  const wrap = document.getElementById('validate-wrap');
+  wrap.classList.add('show');
+
+  const badge = document.getElementById('vl-server-badge');
+  const runBtn = document.getElementById('vl-run-btn');
+  const cmdSection = document.getElementById('vl-cmd-section');
+  const pasteSection = document.getElementById('vl-paste-section');
+
+  if (launchPyAvailable) {
+    badge.textContent = 'live server';
+    badge.className = 'vl-server-badge live';
+    runBtn.style.display = '';
+    cmdSection.style.display = 'none';
+    pasteSection.style.display = 'none';
+  } else {
+    badge.textContent = 'copy-paste mode';
+    badge.className = 'vl-server-badge local';
+    runBtn.style.display = 'none';
+    cmdSection.style.display = '';
+    pasteSection.style.display = '';
+  }
+  document.getElementById('vl-results-area').innerHTML = '';
+}
+
+function resetValidate() {
+  document.getElementById('validate-wrap').classList.remove('show');
+  document.getElementById('vl-results-area').innerHTML = '';
+  if (document.getElementById('vl-paste-input')) {
+    document.getElementById('vl-paste-input').value = '';
+  }
+}
+
+function downloadPlaybook() {
+  const code = document.getElementById('out-converted').textContent;
+  if (!code || code === 'Converted code will appear here after generation.') {
+    alert('Run a conversion first.'); return;
+  }
+  const blob = new Blob([code], { type: 'text/yaml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'playbook.yml';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  diagAddLog('INFO', 'Downloaded playbook.yml for local ansible-lint validation');
+}
+
+async function runValidate() {
+  if (!launchPyAvailable) return;
+  const code = document.getElementById('out-converted').textContent;
+  if (!code) { alert('No converted code to validate.'); return; }
+
+  const btn = document.getElementById('vl-run-btn');
+  const results = document.getElementById('vl-results-area');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  results.innerHTML = '';
+
+  try {
+    const res = await fetch('/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playbook: code })
+    });
+    const data = await res.json();
+    renderLintResults(data);
+    diagAddLog(data.passed ? 'OK' : 'WARN',
+      `ansible-lint: ${data.passed ? 'passed' : `${data.error_count} error(s), ${data.warning_count} warning(s)`}`);
+  } catch (e) {
+    results.innerHTML = `<div class="vl-violation vl-error"><span class="vl-sev">Error</span><span>${escHtml(e.message)}</span></div>`;
+    diagAddLog('ERR', 'ansible-lint request failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Run ansible-lint';
+  }
+}
+
+function parseRawLintOutput() {
+  const raw = document.getElementById('vl-paste-input').value.trim();
+  if (!raw) { alert('Paste some ansible-lint output first.'); return; }
+
+  // Try JSON first
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const violations = parsed.map(v => ({
+        rule:     v.check_name || v.rule?.id || 'unknown',
+        message:  v.description || v.message || '',
+        severity: normaliseSev(v.severity),
+        line:     v.location?.lines?.begin || null,
+      }));
+      renderLintResults({
+        available: true,
+        passed: violations.length === 0,
+        violations,
+        error_count:   violations.filter(v => v.severity === 'error').length,
+        warning_count: violations.filter(v => v.severity === 'warning').length,
+        raw
+      });
+      return;
+    }
+  } catch { /* not JSON, parse as plain text */ }
+
+  // Plain text: "file.yml:line:col: severity[rule] message"
+  const lines = raw.split('\n');
+  const violations = [];
+  for (const line of lines) {
+    const m = line.match(/^.+?:(\d+):\d+:\s*(error|warning|info)\[([^\]]+)\]\s+(.+)$/i);
+    if (m) {
+      violations.push({ line: parseInt(m[1]), severity: normaliseSev(m[2]), rule: m[3], message: m[4].trim() });
+    }
+  }
+  renderLintResults({
+    available: true,
+    passed: violations.length === 0,
+    violations,
+    error_count:   violations.filter(v => v.severity === 'error').length,
+    warning_count: violations.filter(v => v.severity === 'warning').length,
+    raw
+  });
+}
+
+function normaliseSev(raw) {
+  raw = (raw || '').toLowerCase();
+  if (['error','critical','blocker','major'].includes(raw)) return 'error';
+  if (['info','minor'].includes(raw)) return 'info';
+  return 'warning';
+}
+
+function renderLintResults(data) {
+  const el = document.getElementById('vl-results-area');
+
+  if (!data.available) {
+    el.innerHTML = `<div class="vl-violation vl-warning">
+      <span class="vl-sev">Not found</span>
+      <div><div>${escHtml(data.error || 'ansible-lint not available')}</div>
+      <div class="vl-rule">Install: pip install ansible-lint ansible-core</div></div>
+    </div>`;
+    return;
+  }
+
+  if (data.passed || data.violations.length === 0) {
+    el.innerHTML = `<div class="vl-passed-banner">&#10003; ansible-lint passed — no violations found${data.lint_version ? ' · ' + escHtml(data.lint_version) : ''}</div>`;
+    return;
+  }
+
+  const rows = data.violations.map(v => `
+    <div class="vl-violation vl-${escHtml(v.severity)}">
+      <span class="vl-sev">${escHtml(v.severity)}</span>
+      <div style="flex:1;min-width:0;">
+        <div>${escHtml(v.message)}</div>
+        <div class="vl-rule">${escHtml(v.rule)}</div>
+      </div>
+      ${v.line ? `<span class="vl-line">line ${v.line}</span>` : ''}
+    </div>`).join('');
+
+  const summary = `${data.error_count} error${data.error_count !== 1 ? 's' : ''}, ${data.warning_count} warning${data.warning_count !== 1 ? 's' : ''}`;
+
+  el.innerHTML = `<div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${summary}</div>
+    <div class="vl-results">${rows}</div>
+    ${data.raw ? `<details style="margin-top:8px;"><summary style="font-size:11px;color:var(--text3);cursor:pointer;">Raw output</summary><div class="vl-raw" style="margin-top:4px;">${escHtml(data.raw)}</div></details>` : ''}`;
+}
+
 // ─── Iterative refinement ─────────────────────────────────────────
 async function runFix() {
   const fixInput = document.getElementById('fix-input').value.trim();
@@ -1491,6 +1676,7 @@ async function runAll() {
   resetIdempotency();
   resetConfidence();
   resetCoverage();
+  resetValidate();
   resetVariables();
   resetDiffView();
   batchResults = [];
