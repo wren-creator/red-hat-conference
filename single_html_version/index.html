@@ -443,6 +443,14 @@
             <option value="2000">2 seconds (rate limit safe)</option>
           </select>
         </div>
+        <div class="field">
+          <label>Annotation mode</label>
+          <select id="annotation-mode">
+            <option value="false">Off — clean output only (default)</option>
+            <option value="true">On — inline comments explaining each mapping</option>
+          </select>
+          <p class="settings-note">When on, the converted output includes a comment after each task or block explaining which source construct it replaces and why that mapping was chosen.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -1703,7 +1711,8 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   diagSet('model', 'green', provider === 'ollama'
     ? document.getElementById('ollama-model').value
     : (document.getElementById(provider + '-model')?.value || provider));
-  diagAddLog('INFO', `Run started · ${srcLabel} → ${tgtLabel} · ~${estTokens} est. tokens`);
+  const annotationModeOn = document.getElementById('annotation-mode').value === 'true';
+  diagAddLog('INFO', `Run started · ${srcLabel} → ${tgtLabel} · ~${estTokens} est. tokens${annotationModeOn ? ' · annotation mode ON' : ''}`);
 
   const skipAssess = document.getElementById('skip-complexity').value === 'true';
   if (!skipAssess) {
@@ -1755,6 +1764,10 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
 
   // ── Step 3: Conversion ───────────────────────────────────────────
   showStatus('Converting to ' + tgtLabel + '…', true);
+  const annotate = document.getElementById('annotation-mode').value === 'true';
+  const annotationNote = annotate
+    ? '\nANNOTATION MODE: After each converted task, module call, or logical block add a single inline comment in the format: # [From: <source construct> — <reason this mapping was chosen>]. Skip trivial one-liners that are self-evident. Explain non-obvious decisions and module choices.\n'
+    : '';
   const manualNote = complexity.manual_required
     ? '\nIMPORTANT: Insert a # TODO: MANUAL REVIEW comment with a specific reason at every location requiring human intervention.'
     : '';
@@ -1766,6 +1779,7 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
     (tgt === 'python3' ? '\n- Use argparse for CLI args\n- Use subprocess.run() for shell commands\n' : '') +
     (langHints.convert ? `\n${langHints.convert}\n` : '') +
     varHint +
+    annotationNote +
     manualNote +
     `\n\nOriginal ${srcLabel} script:\n${code}`;
 
