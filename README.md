@@ -19,13 +19,15 @@
 
 ## The Story
 
-I first presented this idea at **Red Hat Summit**. The community response was fantastic — and the feedback was even better. What I kept hearing was a version of the same question:
+This started at **Red Hat Summit**, where the community response was fantastic — and the feedback was even better. What I kept hearing was a version of the same question:
 
 > *"How do I know the modernized script actually does what the old one did?"*
 
 That question sent me back to the drawing board. The result is the **Rosetta Stone** — a rebuilt, end-to-end pipeline that doesn't just convert legacy scripts, it understands them first.
 
-This repository contains all materials used for the **2026 Red Hat Conference in Atlanta**, including:
+The pipeline continued to evolve through and after the **2026 Red Hat Conference in Atlanta**. Practitioner conversations there — especially around enterprise PowerShell and real Ansible migration friction — drove most of the features you see today.
+
+This repository contains all materials from the **2026 Red Hat Conference in Atlanta** — and the continued work that followed. The conference conversations, especially around enterprise PowerShell and the real friction teams hit moving to Ansible, reshaped the pipeline significantly. What's here now is the evolved version. Includes:
 
 - Custom Ollama ModelFiles for local, offline AI execution
 - The Rosetta Stone web application (browser-only and Node.js versions)
@@ -262,5 +264,5 @@ These demos are designed to run on Linux, macOS, and zLinux. The browser-only ve
 
 ---
 
-*Built for Red Hat Conference 2026 · Atlanta*
-*Started at Red Hat Summit · Rebuilt with community feedback*
+*Presented at Red Hat Conference 2026 · Atlanta*
+*Started at Red Hat Summit · Rebuilt with community feedback · Continuing to evolve*
