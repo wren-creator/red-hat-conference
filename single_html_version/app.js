@@ -19,6 +19,7 @@ let provider='ollama';
 let lastConversionContext = null;
 let conversionHistory = [], historySeq = 0;
 let launchPyAvailable = false;
+let sovereignMode = false;
 
 // Model caches — cleared on provider/URL change so stale lists don't linger
 let cachedOllamaModels = null;
@@ -33,10 +34,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const gm = localStorage.getItem('rs_gemini_model'); if(gm) document.getElementById('gemini-model').value=gm;
   const oi = localStorage.getItem('rs_openai_model'); if(oi) document.getElementById('openai-model').value=oi;
   const am = localStorage.getItem('rs_anthropic_model'); if(am) document.getElementById('anthropic-model').value=am;
-  setProvider(savedProv);
+  const savedSov = localStorage.getItem('rs_sovereign') === 'true';
+  if (savedSov) setSovereignMode(true);
+  else setProvider(savedProv);
   loadSample();
   renderOllamaCorsCmd();
-  setTimeout(() => diagAddLog('INFO', 'Page loaded · provider: ' + provider), 150);
+  setTimeout(() => diagAddLog('INFO', 'Page loaded · provider: ' + provider + (sovereignMode ? ' · sovereign mode ON' : '')), 150);
   probeLaunchPy();
 });
 
@@ -74,6 +77,77 @@ function setProvider(p) {
   }
 
   if (document.getElementById('diag-panel').classList.contains('open')) diagRunAutoDetect();
+}
+
+// ─── Sovereign AI mode ────────────────────────────────────────────
+function setSovereignMode(enabled) {
+  sovereignMode = enabled;
+  document.getElementById('sovereign-checkbox').checked = enabled;
+
+  const banner  = document.getElementById('sovereign-banner');
+  const togRow  = document.getElementById('sovereign-toggle-row');
+  const provSel = document.getElementById('provider-select');
+  const modelRecs = document.getElementById('sv-model-recs');
+  const cloudProviders = ['anthropic', 'openai', 'gemini'];
+
+  if (enabled) {
+    // Lock to Ollama
+    setProvider('ollama');
+    provSel.disabled = true;
+    cloudProviders.forEach(p => {
+      const el = document.getElementById('fields-' + p);
+      if (el) el.style.display = 'none';
+    });
+    banner.style.display = '';
+    togRow.classList.add('sv-active');
+    modelRecs.style.display = '';
+    diagAddLog('INFO', 'Sovereign AI mode enabled — locked to Ollama, cloud providers disabled');
+  } else {
+    provSel.disabled = false;
+    cloudProviders.forEach(p => {
+      const el = document.getElementById('fields-' + p);
+      if (el) el.style.display = '';
+    });
+    banner.style.display = 'none';
+    togRow.classList.remove('sv-active');
+    modelRecs.style.display = 'none';
+    diagAddLog('INFO', 'Sovereign AI mode disabled');
+  }
+  savePrefs();
+}
+
+function copyPullCmd(model) {
+  const cmd = `ollama pull ${model}`;
+  navigator.clipboard.writeText(cmd).catch(() => {});
+  const preview = document.getElementById('sv-pull-preview');
+  const cmdEl   = document.getElementById('sv-pull-cmd');
+  const copied  = document.getElementById('sv-pull-copied');
+  preview.style.display = '';
+  cmdEl.textContent = cmd;
+  copied.classList.add('show');
+  setTimeout(() => copied.classList.remove('show'), 2000);
+  diagAddLog('INFO', `Copied to clipboard: ${cmd}`);
+}
+
+async function sovereignPreflight() {
+  const base  = document.getElementById('ollama-url').value.replace(/\/$/, '');
+  const model = document.getElementById('ollama-model').value;
+  const issues = [];
+
+  try {
+    const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error('non-200');
+    const data = await res.json();
+    const pulled = (data.models || []).map(m => m.name);
+    const found  = pulled.some(m => m === model || m.startsWith(model + ':') || m.startsWith(model.split(':')[0] + ':'));
+    if (!found && pulled.length > 0) {
+      issues.push({ level: 'warn', msg: `Model "${model}" not found in Ollama. Run: ollama pull ${model}` });
+    }
+  } catch {
+    issues.push({ level: 'error', msg: `Ollama is not responding at ${base}. Start it with: ollama serve` });
+  }
+
+  return issues;
 }
 
 // ─── Ollama model loading ─────────────────────────────────────────
@@ -455,6 +529,7 @@ function savePrefs() {
   localStorage.setItem('rs_ollama_model', document.getElementById('ollama-model').value);
   localStorage.setItem('rs_gemini_model', document.getElementById('gemini-model').value);
   localStorage.setItem('rs_openai_model', document.getElementById('openai-model').value);
+  localStorage.setItem('rs_sovereign', sovereignMode ? 'true' : 'false');
 }
 
 function toggleVis(id, btn) {
@@ -1681,6 +1756,25 @@ async function runAll() {
   resetDiffView();
   batchResults = [];
   savePrefs();
+
+  // ── Sovereign pre-flight ─────────────────────────────────────────
+  if (sovereignMode) {
+    showStatus('Sovereign pre-flight check…', true);
+    const sfIssues = await sovereignPreflight();
+    const fatal = sfIssues.find(i => i.level === 'error');
+    if (fatal) {
+      showStatus('Sovereign pre-flight failed', false);
+      const banner = document.getElementById('ctx-banner');
+      banner.className = 'ctx-banner ctx-red';
+      banner.innerHTML = '&#128274; ' + escHtml(fatal.msg);
+      diagAddLog('ERR', 'Sovereign pre-flight: ' + fatal.msg);
+      btn.disabled = false;
+      return;
+    }
+    sfIssues.filter(i => i.level === 'warn').forEach(i => {
+      diagAddLog('WARN', 'Sovereign pre-flight: ' + i.msg);
+    });
+  }
 
   try {
     if (mode === 'single') {

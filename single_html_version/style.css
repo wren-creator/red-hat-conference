@@ -29,6 +29,36 @@
   .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
 
   /* Settings */
+  /* ── Sovereign AI mode ── */
+  .sovereign-banner { display: flex; align-items: center; gap: 8px; padding: 9px 14px; margin-bottom: 1rem; background: var(--bg-success); color: var(--text-success); border: 0.5px solid #1D9E75; border-radius: var(--radius); font-size: 12px; }
+  .sovereign-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 10px 12px; margin-bottom: 1rem; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); }
+  .sovereign-toggle.sv-active { background: var(--bg-success); border-color: #1D9E75; }
+  .sv-toggle-left { flex: 1; min-width: 0; }
+  .sv-toggle-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .sv-toggle-desc { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+  .sv-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+  .sv-switch input { opacity: 0; width: 0; height: 0; }
+  .sv-slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 22px; transition: 0.2s; }
+  .sv-slider:before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 2px; background: var(--text3); border-radius: 50%; transition: 0.2s; }
+  .sv-switch input:checked + .sv-slider { background: #1D9E75; border-color: #1D9E75; }
+  .sv-switch input:checked + .sv-slider:before { transform: translateX(18px); background: #fff; }
+  .sv-rec-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin: 12px 0 6px; }
+  .sv-model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  @media(max-width:500px){ .sv-model-grid { grid-template-columns: 1fr; } }
+  .sv-model-card { padding: 9px 10px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--bg2); display: flex; flex-direction: column; gap: 3px; }
+  .sv-model-card.sv-recommended { border-color: #1D9E75; background: var(--bg-success); }
+  .sv-model-name { font-family: var(--mono); font-size: 11.5px; font-weight: 600; color: var(--text); }
+  .sv-model-desc { font-size: 11px; color: var(--text2); line-height: 1.3; }
+  .sv-model-meta { font-size: 10.5px; color: var(--text3); display: flex; align-items: center; gap: 6px; margin-top: 1px; }
+  .sv-badge { font-size: 9.5px; padding: 1px 5px; border-radius: 3px; background: var(--bg3); color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border: 0.5px solid var(--border); }
+  .sv-badge-rec { background: #d4f0e7; color: #0f5c3a; border-color: #1D9E75; }
+  .sv-copy-btn { margin-top: 6px; width: 100%; }
+  .sv-pull-preview { margin-top: 8px; padding: 7px 10px; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); font-family: var(--mono); font-size: 11.5px; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sv-pull-cmd { flex: 1; word-break: break-all; }
+  .sv-pull-copied { font-size: 10px; font-weight: 700; color: var(--text-success); white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .sv-pull-copied.show { opacity: 1; }
+  select:disabled { opacity: 0.45; cursor: not-allowed; }
+
   .settings-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
   .settings-panel.open { display: block; }
   .settings-title { font-size: 13px; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }

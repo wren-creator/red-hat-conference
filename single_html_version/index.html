@@ -34,9 +34,27 @@
   <div class="app-sub">Rosetta Stone &nbsp;·&nbsp; translate legacy scripts into modern automation</div>
   <div style="font-size:11px;color:var(--text3);padding-left:36px;margin-top:-10px;margin-bottom:1.5rem;">by: Britley Hoff</div>
 
+  <!-- Sovereign AI banner — visible when sovereign mode is active -->
+  <div class="sovereign-banner" id="sovereign-banner" style="display:none;">
+    &#128274; <strong>Sovereign AI Mode active</strong> &nbsp;·&nbsp; All processing is local. No data leaves this machine.
+  </div>
+
   <!-- Settings Panel -->
   <div class="settings-panel" id="settings-panel">
     <div class="settings-title">&#9881; AI Provider Settings</div>
+
+    <!-- Sovereign mode toggle -->
+    <div class="sovereign-toggle" id="sovereign-toggle-row">
+      <div class="sv-toggle-left">
+        <div class="sv-toggle-title">&#128274; Sovereign AI Mode</div>
+        <div class="sv-toggle-desc">Lock to local Ollama — no API keys, no cloud calls, no data leaves this machine. Recommended for air-gapped and regulated environments.</div>
+      </div>
+      <label class="sv-switch">
+        <input type="checkbox" id="sovereign-checkbox" onchange="setSovereignMode(this.checked)">
+        <span class="sv-slider"></span>
+      </label>
+    </div>
+
     <div class="settings-grid">
 
       <!-- Provider column -->
@@ -73,6 +91,41 @@
           </div>
           <div id="ollama-probe-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11px;font-family:var(--mono);line-height:1.6;word-break:break-all;border:0.5px solid var(--border);background:var(--bg2);color:var(--text2);"></div>
           <p class="settings-note" id="ollama-cors-note" style="margin-top:6px;">Models load automatically from your local Ollama instance. Use <strong>launch.py</strong> to serve locally, or see the probe output below for connection help.</p>
+
+          <!-- Sovereign model recommendations — shown when sovereign mode is ON -->
+          <div id="sv-model-recs" style="display:none;">
+            <div class="sv-rec-label">&#127775; Recommended models for offline conversion</div>
+            <div class="sv-model-grid">
+              <div class="sv-model-card sv-recommended">
+                <div class="sv-model-name">qwen2.5-coder:14b</div>
+                <div class="sv-model-desc">Best balance of quality and speed</div>
+                <div class="sv-model-meta">&#128190; 16GB RAM &nbsp;·&nbsp; <span class="sv-badge sv-badge-rec">Recommended</span></div>
+                <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('qwen2.5-coder:14b')">Copy pull command</button>
+              </div>
+              <div class="sv-model-card">
+                <div class="sv-model-name">qwen2.5-coder:7b</div>
+                <div class="sv-model-desc">Fast, good for demos and smaller scripts</div>
+                <div class="sv-model-meta">&#128190; 8GB RAM &nbsp;·&nbsp; <span class="sv-badge">Low resource</span></div>
+                <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('qwen2.5-coder:7b')">Copy pull command</button>
+              </div>
+              <div class="sv-model-card">
+                <div class="sv-model-name">deepseek-coder-v2:16b</div>
+                <div class="sv-model-desc">Highest quality output for complex scripts</div>
+                <div class="sv-model-meta">&#128190; 24GB RAM &nbsp;·&nbsp; <span class="sv-badge">High quality</span></div>
+                <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('deepseek-coder-v2:16b')">Copy pull command</button>
+              </div>
+              <div class="sv-model-card">
+                <div class="sv-model-name">codellama:13b</div>
+                <div class="sv-model-desc">Widely available fallback</div>
+                <div class="sv-model-meta">&#128190; 16GB RAM &nbsp;·&nbsp; <span class="sv-badge">Fallback</span></div>
+                <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('codellama:13b')">Copy pull command</button>
+              </div>
+            </div>
+            <div class="sv-pull-preview" id="sv-pull-preview" style="display:none;">
+              <span class="sv-pull-cmd" id="sv-pull-cmd"></span>
+              <span class="sv-pull-copied" id="sv-pull-copied">Copied!</span>
+            </div>
+          </div>
         </div>
 
         <!-- Anthropic fields -->
