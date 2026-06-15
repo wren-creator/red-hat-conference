@@ -22,6 +22,41 @@ import sys
 import json
 import subprocess
 import tempfile
+import shutil
+
+
+def _find_ansible_lint():
+    """Locate ansible-lint, checking common pip/pipx install paths if not on PATH."""
+    found = shutil.which('ansible-lint')
+    if found:
+        return found
+    home = os.path.expanduser('~')
+    candidates = [
+        os.path.join(home, '.local', 'bin', 'ansible-lint'),
+        os.path.join(home, '.pyenv', 'shims', 'ansible-lint'),
+        '/opt/homebrew/bin/ansible-lint',
+        '/opt/homebrew/opt/ansible-lint/bin/ansible-lint',
+        '/usr/local/bin/ansible-lint',
+        '/usr/bin/ansible-lint',
+    ]
+    for c in candidates:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return None
+
+
+def _subprocess_env():
+    """Return an env dict with common pip/pipx bin dirs prepended to PATH."""
+    env = os.environ.copy()
+    home = os.path.expanduser('~')
+    extra = [
+        os.path.join(home, '.local', 'bin'),
+        os.path.join(home, '.pyenv', 'shims'),
+        '/opt/homebrew/bin',
+        '/usr/local/bin',
+    ]
+    env['PATH'] = ':'.join(extra + env.get('PATH', '').split(':'))
+    return env
 
 
 class RosettaHandler(http.server.SimpleHTTPRequestHandler):
@@ -60,19 +95,21 @@ class RosettaHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         # Check ansible-lint is installed
-        try:
-            ver = subprocess.run(
-                ['ansible-lint', '--version'],
-                capture_output=True, text=True, timeout=5
-            )
-            lint_version = ver.stdout.split('\n')[0].strip()
-        except FileNotFoundError:
+        lint_bin = _find_ansible_lint()
+        if not lint_bin:
             self._json(200, {
                 'available': False,
                 'error': 'ansible-lint not found',
                 'install': 'pip install ansible-lint ansible-core'
             })
             return
+
+        try:
+            ver = subprocess.run(
+                [lint_bin, '--version'],
+                capture_output=True, text=True, timeout=5, env=_subprocess_env()
+            )
+            lint_version = ver.stdout.split('\n')[0].strip()
         except Exception as e:
             self._json(200, {'available': False, 'error': str(e)})
             return
@@ -87,8 +124,8 @@ class RosettaHandler(http.server.SimpleHTTPRequestHandler):
                 tmp = f.name
 
             result = subprocess.run(
-                ['ansible-lint', '--format', 'json', '--nocolor', tmp],
-                capture_output=True, text=True, timeout=30
+                [lint_bin, '--format', 'json', '--nocolor', tmp],
+                capture_output=True, text=True, timeout=30, env=_subprocess_env()
             )
 
             # returncode: 0 = passed, 2 = violations found, 1 = fatal/parse error
@@ -188,13 +225,15 @@ def main():
     url = f'http://localhost:{args.port}/index.html'
 
     # Check ansible-lint availability at startup and tell the user
-    try:
-        ver = subprocess.run(['ansible-lint', '--version'], capture_output=True, text=True, timeout=5)
-        lint_info = f'ansible-lint found — {ver.stdout.split(chr(10))[0].strip()}'
-    except FileNotFoundError:
+    lint_bin = _find_ansible_lint()
+    if lint_bin:
+        try:
+            ver = subprocess.run([lint_bin, '--version'], capture_output=True, text=True, timeout=5, env=_subprocess_env())
+            lint_info = f'ansible-lint found — {ver.stdout.split(chr(10))[0].strip()} ({lint_bin})'
+        except Exception:
+            lint_info = f'ansible-lint found at {lint_bin} (version check failed)'
+    else:
         lint_info = 'ansible-lint not found — install with: pip install ansible-lint ansible-core'
-    except Exception:
-        lint_info = 'ansible-lint status unknown'
 
     try:
         with socketserver.TCPServer(('', args.port), RosettaHandler) as httpd:

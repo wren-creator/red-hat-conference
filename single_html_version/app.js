@@ -901,6 +901,44 @@ function showWarning(level, issues) {
   el.innerHTML = `<strong>${title}</strong>${issues.map(i => `&bull; ${i}`).join('<br>')}`;
 }
 
+// ─── Single-mode file picker and drag-and-drop ────────────────────
+function handleSingleFilePicker(input) {
+  const file = input.files[0];
+  if (!file) return;
+  loadSingleFile(file);
+  input.value = '';
+}
+
+function loadSingleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('code-input').value = e.target.result;
+    onSrcChange();
+    diagAddLog('INFO', `Loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+  };
+  reader.readAsText(file);
+}
+
+function singleDragOver(e) {
+  e.preventDefault();
+  if ([...e.dataTransfer.types].includes('Files')) {
+    document.getElementById('single-drop-overlay').classList.add('show');
+  }
+}
+
+function singleDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    document.getElementById('single-drop-overlay').classList.remove('show');
+  }
+}
+
+function singleDrop(e) {
+  e.preventDefault();
+  document.getElementById('single-drop-overlay').classList.remove('show');
+  const file = e.dataTransfer.files[0];
+  if (file) loadSingleFile(file);
+}
+
 // ─── Queue / File I/O ─────────────────────────────────────────────
 function addToQueue(name, content) { if (queue.find(f => f.name === name)) return; queue.push({ name, content, status: 'pending' }); renderQueue(); }
 function removeFromQueue(i) { queue.splice(i, 1); renderQueue(); }

@@ -382,9 +382,19 @@
     <div id="single-panel">
       <div class="sec-label">
         <span>Legacy source code</span>
-        <button class="sec-action" onclick="loadSample()">load sample &#8594;</button>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="sec-action" onclick="document.getElementById('single-fp').click()">&#128196; pick file</button>
+          <button class="sec-action" onclick="loadSample()">load sample &#8594;</button>
+        </div>
       </div>
-      <textarea id="code-input" placeholder="Paste your legacy script here&#8230;" oninput="onCodeInput()"></textarea>
+      <input type="file" id="single-fp" accept=".sh,.bash,.pl,.pm,.cob,.cbl,.f,.for,.f90,.f95,.awk,.tcl,.csh,.ksh,.zsh,.rex,.rexx,.exec,.ps1,.psm1,.psd1,.py,.tf,.go" style="display:none;" onchange="handleSingleFilePicker(this)">
+      <div class="single-input-wrap"
+           ondragover="singleDragOver(event)"
+           ondragleave="singleDragLeave(event)"
+           ondrop="singleDrop(event)">
+        <textarea id="code-input" placeholder="Paste your legacy script here, pick a file above, or drag one in&#8230;" oninput="onCodeInput()"></textarea>
+        <div class="single-drop-overlay" id="single-drop-overlay">&#8613; Drop to load</div>
+      </div>
     </div>
 
     <!-- Batch mode -->
