@@ -1653,22 +1653,32 @@ function renderLintResults(data) {
     return;
   }
 
-  if (data.passed || data.violations.length === 0) {
+  if (data.passed && data.violations.length === 0) {
     el.innerHTML = `<div class="vl-passed-banner">&#10003; ansible-lint passed — no violations found${data.lint_version ? ' · ' + escHtml(data.lint_version) : ''}</div>`;
     return;
   }
 
-  const rows = data.violations.map(v => `
-    <div class="vl-violation vl-${escHtml(v.severity)}">
+  const rows = data.violations.map(v => {
+    const isLoadFailure = v.rule && v.rule.includes('load-failure');
+    const extra = isLoadFailure
+      ? `<div class="vl-rule" style="margin-top:4px;">The playbook YAML could not be parsed. Check for prose, code fences, or syntax errors above the first task.</div>`
+      : '';
+    return `<div class="vl-violation vl-${escHtml(v.severity)}">
       <span class="vl-sev">${escHtml(v.severity)}</span>
       <div style="flex:1;min-width:0;">
         <div>${escHtml(v.message)}</div>
         <div class="vl-rule">${escHtml(v.rule)}</div>
+        ${extra}
       </div>
       ${v.line ? `<span class="vl-line">line ${v.line}</span>` : ''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
-  const summary = `${data.error_count} error${data.error_count !== 1 ? 's' : ''}, ${data.warning_count} warning${data.warning_count !== 1 ? 's' : ''}`;
+  const parts = [];
+  if (data.error_count)   parts.push(`${data.error_count} error${data.error_count !== 1 ? 's' : ''}`);
+  if (data.warning_count) parts.push(`${data.warning_count} warning${data.warning_count !== 1 ? 's' : ''}`);
+  if (data.info_count)    parts.push(`${data.info_count} info`);
+  const summary = parts.length ? parts.join(', ') : 'no violations';
 
   el.innerHTML = `<div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${summary}</div>
     <div class="vl-results">${rows}</div>
