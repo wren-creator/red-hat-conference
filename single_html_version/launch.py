@@ -120,7 +120,7 @@ class RosettaHandler(http.server.SimpleHTTPRequestHandler):
             with tempfile.NamedTemporaryFile(
                 mode='w', suffix='.yml', prefix='rosetta_', delete=False
             ) as f:
-                f.write(playbook)
+                f.write(_clean_playbook(playbook))
                 tmp = f.name
 
             result = subprocess.run(
@@ -148,7 +148,7 @@ class RosettaHandler(http.server.SimpleHTTPRequestHandler):
                 clean.append({
                     'rule':     v.get('check_name', v.get('rule', {}).get('id', 'unknown')),
                     'message':  v.get('description', v.get('message', '')),
-                    'severity': _normalise_severity(v.get('severity', 'warning')),
+                    'severity': _normalise_severity(v.get('severity', 'warning'), v.get('check_name', v.get('rule', {}).get('id', ''))),
                     'line':     lines.get('begin', loc.get('line', None)),
                 })
 
@@ -204,13 +204,26 @@ class RosettaHandler(http.server.SimpleHTTPRequestHandler):
             print(f'  {self.address_string()} — {fmt % args}')
 
 
-def _normalise_severity(raw):
-    raw = str(raw).lower()
-    if raw in ('error', 'critical', 'blocker', 'major'):
+def _normalise_severity(raw, rule=''):
+    # load-failure means ansible-lint couldn't even parse the file — always an error
+    if 'load-failure' in str(rule).lower():
         return 'error'
-    if raw in ('info', 'minor'):
+    raw = str(raw).lower()
+    if raw in ('error', 'critical', 'blocker', 'major', 'very_high', 'high'):
+        return 'error'
+    if raw in ('info', 'minor', 'low'):
         return 'info'
     return 'warning'
+
+
+def _clean_playbook(content):
+    """Strip leading non-YAML text (explanations, code fences) before linting."""
+    lines = content.split('\n')
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if s == '---' or s.startswith('- ') or s.startswith('-\t'):
+            return '\n'.join(lines[i:])
+    return content
 
 
 def main():

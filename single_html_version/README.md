@@ -187,6 +187,8 @@ Click the **⚙ Settings** button in the top-right header to configure:
 
 The **Test connection** button sends a minimal test request to verify your provider and key are working before you run a real conversion.
 
+> **Large script handling:** Scripts over ~1,500 tokens (~6,000 characters) are automatically split into chunks and processed section by section, then merged into a single output. For Ansible, all task chunks are merged under one playbook header. For other targets, sections are concatenated with markers. An amber banner appears during chunked runs showing how many sections are being processed. No configuration needed — chunking is transparent.
+
 Non-sensitive preferences (provider choice, model name, Ollama URL) are saved to `localStorage` so you don't have to re-enter them each session.
 
 ---
@@ -274,7 +276,7 @@ The `scripts/` directory contains supporting tooling:
 - **Complex Bash** with heavy use of `eval`, dynamic variable names, or process substitution may produce incomplete conversions — the complexity scorer will flag these.
 - **Ansible conversion** works best for infrastructure automation scripts. Application-layer logic (complex string processing, algorithmic code) maps poorly to Ansible's declarative model and will generate `TODO` markers accordingly.
 - **Test script generation** is based on behavioral inference from the source code, not execution. Generated tests should be reviewed and run in a safe environment before being used to gate any deployment.
-- **Ollama context limits** — the app auto-detects your model's context window and warns if a script is too large. Very large scripts may need to be split or processed with a cloud provider instead.
+- **Ollama context limits** — the app auto-detects your model's context window. Scripts that exceed it are automatically processed in chunks (see Settings Panel above), or you can switch to a cloud provider for very large inputs.
 - The **sovereign AI option** is not yet implemented as a simplified configuration. Ollama support is available but the model recommendations and single-command setup for cost-sensitive or air-gapped environments are still being built out.
 
 ---
