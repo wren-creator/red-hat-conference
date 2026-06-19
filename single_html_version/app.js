@@ -623,6 +623,236 @@ async function checkOllamaContext(code) {
   return { ok: false, estimatedTokens };
 }
 
+// ─── Code chunking ────────────────────────────────────────────────
+const CHUNK_CHARS = 4000;      // ~1000 tokens per chunk
+const CHUNK_THRESHOLD = 6000;  // chunk when script exceeds this
+
+function splitIntoChunks(code, maxChars) {
+  const lines = code.split('\n');
+  const chunks = [];
+  let buf = [], bufLen = 0;
+
+  const flush = () => { if (buf.length) { chunks.push(buf.join('\n')); buf = []; bufLen = 0; } };
+
+  for (const line of lines) {
+    const len = line.length + 1;
+    if (bufLen + len > maxChars && buf.length > 0) {
+      // Prefer splitting at a blank line in the last 30 lines of buf
+      let splitAt = -1;
+      for (let i = buf.length - 1; i >= Math.max(0, buf.length - 30); i--) {
+        if (buf[i].trim() === '') { splitAt = i; break; }
+      }
+      if (splitAt > 0) {
+        chunks.push(buf.slice(0, splitAt).join('\n'));
+        buf = buf.slice(splitAt + 1);
+        bufLen = buf.reduce((s, l) => s + l.length + 1, 0);
+      } else {
+        flush();
+      }
+    }
+    buf.push(line);
+    bufLen += len;
+  }
+  flush();
+  return chunks.filter(c => c.trim());
+}
+
+function buildMergedConversion(parts, tgt, srcLabel, N) {
+  if (tgt === 'ansible') {
+    const header = `---\n# Converted from ${srcLabel} by Rosetta Stone (${N} chunks merged)\n- hosts: all\n  gather_facts: yes\n  become: yes\n  vars: {}\n  tasks:\n`;
+    const body = parts.map((p, i) => {
+      const marker = `    # === Chunk ${i + 1} of ${N} ===`;
+      const indented = p.trim().split('\n').map(l => l ? '    ' + l : '').join('\n');
+      return marker + '\n' + indented;
+    }).join('\n\n');
+    return header + body;
+  }
+  const c = { python3: '#', go: '//', terraform: '#', powershell: '#' }[tgt] || '#';
+  const header = `${c} Converted from ${srcLabel} by Rosetta Stone (${N} chunks merged)\n\n`;
+  return header + parts.map((p, i) => `${c} === Chunk ${i + 1} of ${N} ===\n${p.trim()}`).join('\n\n');
+}
+
+async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
+  const src = document.getElementById('src-lang').value;
+  const ext = TGT_EXT[tgt];
+  const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
+  const langHints = LANG_HINTS[src] || {};
+  lastConversionContext = { code, srcLabel, tgt, tgtLabel, langHints };
+  let complexity = { score: 0, level: 'low', label: 'Clean', issues: [], manual_required: false };
+
+  const chunks = splitIntoChunks(code, CHUNK_CHARS);
+  const N = chunks.length;
+  const estTokens = Math.ceil(code.length / 4);
+
+  const banner = document.getElementById('ctx-banner');
+  banner.className = 'ctx-banner show ctx-amber';
+  banner.innerHTML = `<strong>&#9889; Large script — processing in ${N} chunks</strong>~${estTokens.toLocaleString()} estimated tokens split into ${N} sections (~${Math.ceil(CHUNK_CHARS / 4)} tokens each). Results merged automatically.`;
+
+  diagAddLog('INFO', `Chunked run · ${N} chunks · ${srcLabel} → ${tgtLabel} · ~${estTokens} est. tokens`);
+
+  const skipAssess = document.getElementById('skip-complexity').value === 'true';
+  if (!skipAssess) {
+    showStatus('Analyzing complexity…', true);
+    complexity = await assessComplexity(code, srcLabel, tgtLabel);
+    showComplexity(complexity.score, `${complexity.label} (${complexity.score}/100)`, complexity.level);
+    showWarning(complexity.level, complexity.issues);
+  } else {
+    document.getElementById('complexity-wrap').style.display = 'none';
+    document.getElementById('warn-banner').className = 'warn-banner';
+  }
+
+  // ── Step 1: Documentation ─────────────────────────────────────────
+  switchTab('docs'); setDot('docs', 'dot-run');
+  const docParts = [];
+  for (let i = 0; i < N; i++) {
+    showStatus(`Generating documentation (${i + 1}/${N})…`, true);
+    const part = await callAI(SYS_DOC,
+      `Analyze this portion (section ${i + 1} of ${N}) of a larger ${srcLabel} script and document it.\n\n` +
+      `1. PURPOSE — what this section does\n2. INPUTS / OUTPUTS — variables set, files touched, outputs produced\n3. LOGIC WALKTHROUGH — key steps in order\n4. KNOWN RISKS — fragility, assumptions, hardcoded values\n` +
+      (i === 0 ? `5. MIGRATION NOTES — overall challenges converting this script to ${tgtLabel}\n` : '') +
+      `\nSection ${i + 1} of ${N}:\n${chunks[i]}`,
+      t => setOutput('docs', docParts.map((p, j) => `=== Section ${j + 1} of ${N} ===\n${p}`).join('\n\n') + (docParts.length ? '\n\n' : '') + `=== Section ${i + 1} of ${N} ===\n${t}`, true));
+    docParts.push(part);
+  }
+  const docs = docParts.map((p, i) => `=== Section ${i + 1} of ${N} ===\n${p}`).join('\n\n');
+  setOutput('docs', docs, true);
+  setDot('docs', complexity.level === 'high' ? 'dot-warn' : 'dot-done');
+  if (baseName) await saveFile(baseName, '_docs.txt', docs);
+
+  // ── Step 2: Test script ───────────────────────────────────────────
+  switchTab('tests'); setDot('tests', 'dot-run');
+  const testLang = ['python3', 'go'].includes(tgt) ? tgt : 'bash';
+  const testParts = [];
+  for (let i = 0; i < N; i++) {
+    showStatus(`Generating tests (${i + 1}/${N})…`, true);
+    const marker = testLang === 'go' ? `// === Section ${i + 1} of ${N} ===` : `# === Section ${i + 1} of ${N} ===`;
+    const part = await callAI(SYS_TEST,
+      `Write ${testLang === 'python3' ? 'pytest functions' : testLang === 'go' ? 'Go test functions' : 'bash test functions'} for section ${i + 1} of ${N} of a larger ${srcLabel} script. Output ONLY raw code — no fences, no preamble.\n` +
+      (langHints.test ? `\nLanguage-specific guidance:\n${langHints.test}\n` : '') +
+      `\nScript section:\n${chunks[i]}`,
+      t => {
+        const prev = testParts.map((p, j) => `${testLang === 'go' ? '//' : '#'} === Section ${j + 1} of ${N} ===\n${p}`).join('\n\n');
+        setOutput('tests', (prev ? prev + '\n\n' : '') + marker + '\n' + t, false);
+      });
+    testParts.push(part);
+  }
+  const testHeader = testLang === 'python3'
+    ? `# Auto-generated tests — ${N} sections merged\nimport pytest\n\n`
+    : testLang === 'go'
+    ? `// Auto-generated tests — ${N} sections merged\npackage main\n\nimport "testing"\n\n`
+    : `#!/usr/bin/env bash\n# Auto-generated tests — ${N} sections merged\nset -euo pipefail\n\n`;
+  const tests = testHeader + testParts.map((p, i) =>
+    (testLang === 'go' ? `// === Section ${i + 1} of ${N} ===` : `# === Section ${i + 1} of ${N} ===`) + '\n' + p
+  ).join('\n\n');
+  setOutput('tests', tests, false);
+  setDot('tests', 'dot-done');
+  if (baseName) await saveFile(baseName, '_test.' + testExt, tests);
+
+  // Coverage assessment is skipped for chunked runs (too many AI calls)
+  const coverage = [];
+
+  // ── Step 2.5: Variable extraction ────────────────────────────────
+  switchTab('converted'); setDot('converted', 'dot-run');
+  showStatus('Extracting variables…', true);
+  let extractedVars = [];
+  try {
+    extractedVars = await extractVariables(code, srcLabel);
+    showVariables(extractedVars);
+    diagAddLog('INFO', `Variable extraction: ${extractedVars.length} variable(s) identified`);
+  } catch (e) {
+    diagAddLog('WARN', 'Variable extraction failed: ' + e.message);
+  }
+  const varHint = extractedVars.length
+    ? `\nProposed variable names:\n` + extractedVars.map(v => `  ${JSON.stringify(v.value)} → ${v.name} (${v.type})`).join('\n') + '\n'
+    : '';
+
+  // ── Step 3: Conversion ────────────────────────────────────────────
+  const annotate = document.getElementById('annotation-mode').value === 'true';
+  const annotationNote = annotate
+    ? '\nANNOTATION MODE: After each converted task or block add: # [From: <source construct> — <reason>].\n'
+    : '';
+  const manualNote = complexity.manual_required
+    ? '\nIMPORTANT: Insert # TODO: MANUAL REVIEW with a specific reason at every location requiring human intervention.'
+    : '';
+
+  const convertedParts = [];
+  for (let i = 0; i < N; i++) {
+    showStatus(`Converting chunk ${i + 1} of ${N} to ${tgtLabel}…`, true);
+    let prompt;
+    if (tgt === 'ansible') {
+      prompt =
+        `This is chunk ${i + 1} of ${N} of a larger ${srcLabel} script being converted to Ansible YAML.\n` +
+        `Output ONLY the task list items — no playbook header, no "hosts:", no "vars:", no "tasks:" key. Start directly with "- name:".\n` +
+        `\nAnsible task rules:\n- Use official Ansible modules, not shell/command, wherever a module exists\n- Every task must have a descriptive name\n- Prefer idempotent parameters (state:, creates:, removes:)\n- Use block:/rescue:/always: for error handling\n` +
+        (langHints.convert ? `\n${langHints.convert}\n` : '') +
+        varHint + annotationNote + manualNote +
+        `\n\nChunk ${i + 1} of ${N}:\n${chunks[i]}`;
+    } else {
+      prompt =
+        `This is chunk ${i + 1} of ${N} of a larger ${srcLabel} script. Convert ONLY this section to ${tgtLabel}. Output ONLY raw code — no fences, no preamble. The output will be concatenated with other sections.\n` +
+        (i === 0 && tgt === 'python3' ? '- Include imports at the top of this first section.\n' : '') +
+        (tgt === 'python3' ? '- Use argparse for CLI args\n- Use subprocess.run() for shell commands\n' : '') +
+        (langHints.convert ? `\n${langHints.convert}\n` : '') +
+        varHint + annotationNote + manualNote +
+        `\n\nChunk ${i + 1} of ${N}:\n${chunks[i]}`;
+    }
+    const part = await callAI(SYS_CONVERT, prompt, t => {
+      setOutput('converted', buildMergedConversion([...convertedParts, t], tgt, srcLabel, N), false);
+    }, numCtx);
+    convertedParts.push(part);
+    setOutput('converted', buildMergedConversion(convertedParts, tgt, srcLabel, N), false);
+  }
+
+  const converted = buildMergedConversion(convertedParts, tgt, srcLabel, N);
+
+  const looksIncomplete = t => {
+    const s = t.trimEnd();
+    return s.endsWith(':') || s.endsWith(',') || s.endsWith('(') ||
+           s.endsWith('{') || s.endsWith('[') || s.endsWith('\\') ||
+           s.endsWith('|') || s.endsWith('&&') || s.endsWith('name');
+  };
+  const wasTruncated = convertedParts.some(looksIncomplete);
+  if (wasTruncated) {
+    setOutput('converted', converted + '\n\n# ⚠️  WARNING: One or more chunks appear truncated. Increase max tokens in Settings and re-run.', false);
+    diagAddLog('WARN', 'One or more chunks may be truncated — increase max tokens');
+  }
+
+  setDot('converted', (complexity.manual_required || wasTruncated) ? 'dot-warn' : 'dot-done');
+  if (baseName) await saveFile(baseName, '.' + ext, converted);
+
+  // ── Step 4: Idempotency + confidence + validate (Ansible only) ────
+  let idempotency = null;
+  let confidence = [];
+  if (tgt === 'ansible' && converted && !wasTruncated) {
+    showStatus('Scoring idempotency…', true);
+    try {
+      idempotency = await assessIdempotency(converted);
+      showIdempotency(idempotency.score, idempotency.label, idempotency.level, idempotency.flags);
+      diagAddLog(idempotency.score >= 80 ? 'OK' : 'WARN', `Idempotency: ${idempotency.label} (${idempotency.score}/100)`);
+    } catch (e) {
+      diagAddLog('ERR', 'Idempotency check failed: ' + e.message);
+    }
+    showStatus('Scoring task confidence…', true);
+    try {
+      confidence = await assessConfidence(converted);
+      showConfidence(confidence);
+      const low = confidence.filter(t => t.confidence === 'low').length;
+      diagAddLog(low > 0 ? 'WARN' : 'OK', `Confidence: ${confidence.length} tasks scored · ${low} need review`);
+    } catch (e) {
+      diagAddLog('WARN', 'Confidence scoring failed: ' + e.message);
+    }
+    showValidatePanel(converted);
+    diagAddLog('INFO', launchPyAvailable
+      ? 'ansible-lint validation ready — click Run ansible-lint in the panel'
+      : 'ansible-lint validation ready — download playbook.yml and run locally');
+  }
+
+  banner.className = 'ctx-banner show ctx-amber';
+  banner.innerHTML = `<strong>&#10003; Chunked processing complete</strong>${N} sections processed and merged into a single output.`;
+
+  return { docs, tests, converted, complexity, idempotency, confidence, coverage, extractedVars };
+}
+
 // ─── AI providers — pure router (no side effects) ─────────────────
 async function baseCallAI(system, user, onChunk) {
   switch (provider) {
@@ -1840,7 +2070,9 @@ async function runAll() {
 
       const ctxCheck = await checkOllamaContext(code);
       if (!ctxCheck.ok) { showStatus('Blocked — switch to a cloud provider for this script.', false); btn.disabled = false; return; }
-      const result = await processOne(code, srcLabel, tgt, tgtLabel, null, ctxCheck.numCtx);
+      const result = code.length > CHUNK_THRESHOLD
+        ? await processOneChunked(code, srcLabel, tgt, tgtLabel, null, ctxCheck.numCtx)
+        : await processOne(code, srcLabel, tgt, tgtLabel, null, ctxCheck.numCtx);
       saveToHistory({ code, srcLabel, tgtLabel, ...result });
       showStatus(result.complexity.manual_required ? 'Done — manual review required (see warnings above).' : 'Done.', false);
       switchTab('docs');
@@ -1867,7 +2099,9 @@ async function runAll() {
         if (!ctxCheck.ok) { queue[i].status = 'error'; batchResults.push({ name: f.name, complexity: { score: 0, level: 'high', label: 'Too large', issues: ['Script too large for Ollama — switch to a cloud provider'], manual_required: true } }); renderQueue(); continue; }
         try {
           const base = f.name.replace(/\.[^.]+$/, '');
-          const result = await processOne(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx);
+          const result = f.content.length > CHUNK_THRESHOLD
+            ? await processOneChunked(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx)
+            : await processOne(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx);
           queue[i].status = result.complexity.level === 'high' ? 'warn' : 'done';
           saveToHistory({ code: f.content, srcLabel, tgtLabel, ...result });
           batchResults.push({ name: f.name, ...result });
