@@ -97,34 +97,35 @@
             <div class="sv-rec-label">&#127775; Recommended models for offline conversion</div>
             <div class="sv-model-grid">
               <div class="sv-model-card sv-recommended">
+                <div class="sv-model-name">qwen2.5-coder:32b</div>
+                <div class="sv-model-desc">Best quality — primary recommendation for production use</div>
+                <div class="sv-model-meta">&#128190; 24GB RAM &nbsp;·&nbsp; <span class="sv-badge sv-badge-rec">Best Quality</span></div>
+                <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('qwen2.5-coder:32b')">Copy pull command</button>
+              </div>
+              <div class="sv-model-card">
                 <div class="sv-model-name">qwen2.5-coder:14b</div>
-                <div class="sv-model-desc">Best balance of quality and speed</div>
+                <div class="sv-model-desc">Best balance — recommended for most laptops and workstations</div>
                 <div class="sv-model-meta">&#128190; 16GB RAM &nbsp;·&nbsp; <span class="sv-badge sv-badge-rec">Recommended</span></div>
                 <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('qwen2.5-coder:14b')">Copy pull command</button>
               </div>
               <div class="sv-model-card">
                 <div class="sv-model-name">qwen2.5-coder:7b</div>
-                <div class="sv-model-desc">Fast, good for demos and smaller scripts</div>
+                <div class="sv-model-desc">Fast — good for demos, smaller scripts, and 8GB RAM systems</div>
                 <div class="sv-model-meta">&#128190; 8GB RAM &nbsp;·&nbsp; <span class="sv-badge">Low resource</span></div>
                 <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('qwen2.5-coder:7b')">Copy pull command</button>
               </div>
               <div class="sv-model-card">
                 <div class="sv-model-name">deepseek-coder-v2:16b</div>
-                <div class="sv-model-desc">Highest quality output for complex scripts</div>
+                <div class="sv-model-desc">Strong alternative for COBOL and complex legacy code</div>
                 <div class="sv-model-meta">&#128190; 24GB RAM &nbsp;·&nbsp; <span class="sv-badge">High quality</span></div>
                 <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('deepseek-coder-v2:16b')">Copy pull command</button>
-              </div>
-              <div class="sv-model-card">
-                <div class="sv-model-name">codellama:13b</div>
-                <div class="sv-model-desc">Widely available fallback</div>
-                <div class="sv-model-meta">&#128190; 16GB RAM &nbsp;·&nbsp; <span class="sv-badge">Fallback</span></div>
-                <button class="btn btn-sm sv-copy-btn" onclick="copyPullCmd('codellama:13b')">Copy pull command</button>
               </div>
             </div>
             <div class="sv-pull-preview" id="sv-pull-preview" style="display:none;">
               <span class="sv-pull-cmd" id="sv-pull-cmd"></span>
               <span class="sv-pull-copied" id="sv-pull-copied">Copied!</span>
             </div>
+            <p class="settings-note" style="margin-top:8px;">For hardware sizing, air-gapped setup, and quantization guidance see <strong>docs/SOVEREIGN.md</strong> in the project repo.</p>
           </div>
         </div>
 

@@ -657,19 +657,34 @@ function splitIntoChunks(code, maxChars) {
   return chunks.filter(c => c.trim());
 }
 
-function buildMergedConversion(parts, tgt, srcLabel, N) {
+function buildMergedConversion(parts, tgt, srcLabel, N, extractedVars = []) {
   if (tgt === 'ansible') {
-    const header = `---\n# Converted from ${srcLabel} by Rosetta Stone (${N} chunks merged)\n- hosts: all\n  gather_facts: yes\n  become: yes\n  vars: {}\n  tasks:\n`;
+    const varsLines = extractedVars.length
+      ? extractedVars.map(v => `    ${v.name}: ${JSON.stringify(v.value)}  # ${v.type}`).join('\n')
+      : '    {}';
+    const header =
+      `---\n` +
+      `# Rosetta Stone — converted from ${srcLabel}${N > 1 ? ` (${N} chunks merged)` : ''}\n` +
+      `# AAP project layout: place in playbooks/ · list required collections in collections/requirements.yml\n` +
+      `# All modules use FQCN (ansible.builtin.*) for Automation Platform compatibility\n` +
+      `- name: Converted ${srcLabel} automation\n` +
+      `  hosts: all\n` +
+      `  gather_facts: yes\n` +
+      `  become: yes\n` +
+      `  vars:\n` +
+      `${varsLines}\n` +
+      `  tasks:\n`;
     const body = parts.map((p, i) => {
-      const marker = `    # === Chunk ${i + 1} of ${N} ===`;
+      const marker = N > 1 ? `    # === Chunk ${i + 1} of ${N} ===` : '';
       const indented = p.trim().split('\n').map(l => l ? '    ' + l : '').join('\n');
-      return marker + '\n' + indented;
+      return marker ? marker + '\n' + indented : indented;
     }).join('\n\n');
     return header + body;
   }
   const c = { python3: '#', go: '//', terraform: '#', powershell: '#' }[tgt] || '#';
-  const header = `${c} Converted from ${srcLabel} by Rosetta Stone (${N} chunks merged)\n\n`;
-  return header + parts.map((p, i) => `${c} === Chunk ${i + 1} of ${N} ===\n${p.trim()}`).join('\n\n');
+  const label = N > 1 ? ` (${N} chunks merged)` : '';
+  const header = `${c} Rosetta Stone — converted from ${srcLabel}${label}\n\n`;
+  return header + parts.map((p, i) => N > 1 ? `${c} === Chunk ${i + 1} of ${N} ===\n${p.trim()}` : p.trim()).join('\n\n');
 }
 
 async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
@@ -722,29 +737,52 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
   // ── Step 2: Test script ───────────────────────────────────────────
   switchTab('tests'); setDot('tests', 'dot-run');
   const testLang = ['python3', 'go'].includes(tgt) ? tgt : 'bash';
-  const testParts = [];
-  for (let i = 0; i < N; i++) {
-    showStatus(`Generating tests (${i + 1}/${N})…`, true);
-    const marker = testLang === 'go' ? `// === Section ${i + 1} of ${N} ===` : `# === Section ${i + 1} of ${N} ===`;
-    const part = await callAI(SYS_TEST,
-      `Write ${testLang === 'python3' ? 'pytest functions' : testLang === 'go' ? 'Go test functions' : 'bash test functions'} for section ${i + 1} of ${N} of a larger ${srcLabel} script. Output ONLY raw code — no fences, no preamble.\n` +
-      (langHints.test ? `\nLanguage-specific guidance:\n${langHints.test}\n` : '') +
-      `\nScript section:\n${chunks[i]}`,
-      t => {
-        const prev = testParts.map((p, j) => `${testLang === 'go' ? '//' : '#'} === Section ${j + 1} of ${N} ===\n${p}`).join('\n\n');
-        setOutput('tests', (prev ? prev + '\n\n' : '') + marker + '\n' + t, false);
-      });
-    testParts.push(part);
+  let tests;
+
+  if (tgt === 'ansible') {
+    // For Ansible target generate a single holistic playbook validation script
+    showStatus('Generating Ansible validation tests…', true);
+    const condensedSrc = chunks[0].slice(0, 3000) + (N > 1 ? `\n# ... (${N - 1} more sections)` : '');
+    tests = await callAI(SYS_TEST,
+      `Write a bash test script that validates an Ansible playbook converted from this ${srcLabel} script (${N} sections total).\n` +
+      `Assume the playbook is at the path stored in the PLAYBOOK variable (default: ./playbook.yml).\n` +
+      `\nThe test script must:\n` +
+      `1. Run ansible-playbook --syntax-check and assert it passes\n` +
+      `2. Run ansible-playbook --check --diff (dry-run) and assert exit 0\n` +
+      `3. Run ansible-playbook for real and assert exit 0 (first run)\n` +
+      `4. Run ansible-playbook a second time and assert changed=0 (idempotency check)\n` +
+      `5. Verify post-conditions based on what the original script does: files, services, permissions, etc.\n` +
+      `6. Include cleanup/teardown that reverses side effects\n` +
+      `7. Print a PASS/FAIL summary at the end\n` +
+      (langHints.test ? `\nSource language guidance:\n${langHints.test}\n` : '') +
+      `\nOutput ONLY raw bash code, no fences, no preamble.\n\nFirst section of original ${srcLabel} script:\n${condensedSrc}`,
+      t => setOutput('tests', t, false));
+  } else {
+    const testParts = [];
+    for (let i = 0; i < N; i++) {
+      showStatus(`Generating tests (${i + 1}/${N})…`, true);
+      const marker = testLang === 'go' ? `// === Section ${i + 1} of ${N} ===` : `# === Section ${i + 1} of ${N} ===`;
+      const part = await callAI(SYS_TEST,
+        `Write ${testLang === 'python3' ? 'pytest functions' : testLang === 'go' ? 'Go test functions' : 'bash test functions'} for section ${i + 1} of ${N} of a larger ${srcLabel} script. Output ONLY raw code — no fences, no preamble.\n` +
+        (langHints.test ? `\nLanguage-specific guidance:\n${langHints.test}\n` : '') +
+        `\nScript section:\n${chunks[i]}`,
+        t => {
+          const prev = testParts.map((p, j) => `${testLang === 'go' ? '//' : '#'} === Section ${j + 1} of ${N} ===\n${p}`).join('\n\n');
+          setOutput('tests', (prev ? prev + '\n\n' : '') + marker + '\n' + t, false);
+        });
+      testParts.push(part);
+    }
+    const testHeader = testLang === 'python3'
+      ? `# Auto-generated tests — ${N} sections merged\nimport pytest\n\n`
+      : testLang === 'go'
+      ? `// Auto-generated tests — ${N} sections merged\npackage main\n\nimport "testing"\n\n`
+      : `#!/usr/bin/env bash\n# Auto-generated tests — ${N} sections merged\nset -euo pipefail\n\n`;
+    tests = testHeader + testParts.map((p, i) =>
+      (testLang === 'go' ? `// === Section ${i + 1} of ${N} ===` : `# === Section ${i + 1} of ${N} ===`) + '\n' + p
+    ).join('\n\n');
+    setOutput('tests', tests, false);
   }
-  const testHeader = testLang === 'python3'
-    ? `# Auto-generated tests — ${N} sections merged\nimport pytest\n\n`
-    : testLang === 'go'
-    ? `// Auto-generated tests — ${N} sections merged\npackage main\n\nimport "testing"\n\n`
-    : `#!/usr/bin/env bash\n# Auto-generated tests — ${N} sections merged\nset -euo pipefail\n\n`;
-  const tests = testHeader + testParts.map((p, i) =>
-    (testLang === 'go' ? `// === Section ${i + 1} of ${N} ===` : `# === Section ${i + 1} of ${N} ===`) + '\n' + p
-  ).join('\n\n');
-  setOutput('tests', tests, false);
+
   setDot('tests', 'dot-done');
   if (baseName) await saveFile(baseName, '_test.' + testExt, tests);
 
@@ -783,7 +821,12 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
       prompt =
         `This is chunk ${i + 1} of ${N} of a larger ${srcLabel} script being converted to Ansible YAML.\n` +
         `Output ONLY the task list items — no playbook header, no "hosts:", no "vars:", no "tasks:" key. Start directly with "- name:".\n` +
-        `\nAnsible task rules:\n- Use official Ansible modules, not shell/command, wherever a module exists\n- Every task must have a descriptive name\n- Prefer idempotent parameters (state:, creates:, removes:)\n- Use block:/rescue:/always: for error handling\n` +
+        `\nAnsible AAP task rules:\n` +
+        `- Use FULLY QUALIFIED COLLECTION NAMES (FQCN) for every module — ansible.builtin.copy not copy, ansible.builtin.service not service, ansible.builtin.file not file, ansible.builtin.shell not shell, etc.\n` +
+        `- Every task must have a clear, descriptive name\n` +
+        `- Prefer idempotent parameters (state:, creates:, removes:) over imperative shell calls\n` +
+        `- Use block: / rescue: / always: for error handling\n` +
+        `- Use notify: to trigger handlers for service restarts; output handler definitions as a comment block at the end of your chunk marked "# HANDLERS:"\n` +
         (langHints.convert ? `\n${langHints.convert}\n` : '') +
         varHint + annotationNote + manualNote +
         `\n\nChunk ${i + 1} of ${N}:\n${chunks[i]}`;
@@ -797,13 +840,13 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
         `\n\nChunk ${i + 1} of ${N}:\n${chunks[i]}`;
     }
     const part = await callAI(SYS_CONVERT, prompt, t => {
-      setOutput('converted', buildMergedConversion([...convertedParts, t], tgt, srcLabel, N), false);
+      setOutput('converted', buildMergedConversion([...convertedParts, t], tgt, srcLabel, N, extractedVars), false);
     }, numCtx);
     convertedParts.push(part);
-    setOutput('converted', buildMergedConversion(convertedParts, tgt, srcLabel, N), false);
+    setOutput('converted', buildMergedConversion(convertedParts, tgt, srcLabel, N, extractedVars), false);
   }
 
-  const converted = buildMergedConversion(convertedParts, tgt, srcLabel, N);
+  const converted = buildMergedConversion(convertedParts, tgt, srcLabel, N, extractedVars);
 
   const looksIncomplete = t => {
     const s = t.trimEnd();
@@ -1220,7 +1263,7 @@ async function saveFile(base, suffix, content) {
 const SYS_DOC     = 'You are a senior software engineer documenting legacy code for migration. Write thorough, accurate documentation covering all behaviors and edge cases. Use plain text with labeled sections — no markdown headers, no backtick fences, no bullet symbols.';
 const SYS_REVIEW  = 'You are a code migration analyst. Respond only with a valid JSON object, no markdown, no explanation, no backtick fences.';
 const SYS_TEST    = 'You are a senior QA engineer writing migration validation tests. Your only job is to produce a complete, runnable test script. Output ONLY raw code. Absolutely no backtick fences, no preamble, no explanation outside of code comments. Do not truncate — write every test completely.';
-const SYS_CONVERT = 'You are a senior automation engineer specializing in legacy script migration to modern infrastructure-as-code. Output ONLY the converted code — no backtick fences, no preamble, no explanation, no commentary before or after the code. If something cannot be converted cleanly, insert a # TODO: MANUAL REVIEW comment at that exact location with a specific reason. Write the complete output — never truncate.';
+const SYS_CONVERT = 'You are a senior automation engineer specializing in legacy script migration to modern infrastructure-as-code. Output ONLY the converted code — no backtick fences, no preamble, no explanation, no commentary before or after the code. For Ansible output, always use fully qualified collection names (FQCN) for every module — ansible.builtin.copy not copy, ansible.builtin.service not service, ansible.builtin.file not file, ansible.builtin.shell not shell, etc. If something cannot be converted cleanly, insert a # TODO: MANUAL REVIEW comment at that exact location with a specific reason. Write the complete output — never truncate.';
 
 // ─── Language-specific prompt hints ──────────────────────────────
 const LANG_HINTS = {
@@ -1416,10 +1459,22 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   switchTab('tests'); setDot('tests', 'dot-run');
   showStatus('Generating test script…', true);
   const testLang = ['python3', 'go'].includes(tgt) ? tgt : 'bash';
-  const testPrompt =
-    `Write a ${testLang === 'python3' ? 'pytest' : testLang === 'go' ? 'Go test' : 'bash'} test script that verifies a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n` +
-    (langHints.test ? `\nLanguage-specific test guidance:\n${langHints.test}\n` : '') +
-    `\nRequirements:\n- Test every distinct behavior and edge case\n- Use clear, descriptive test names\n- Include setup and teardown where needed\n- Write the complete script — do not truncate\n\nOutput ONLY raw code, no fences, no preamble.\n\nOriginal script:\n${code}`;
+  const testPrompt = tgt === 'ansible'
+    ? `Write a bash test script that validates an Ansible playbook converted from this ${srcLabel} script.\n` +
+      `Assume the playbook is at the path stored in the PLAYBOOK variable (default: ./playbook.yml).\n` +
+      `\nThe test script must:\n` +
+      `1. Run ansible-playbook --syntax-check and assert it passes\n` +
+      `2. Run ansible-playbook --check --diff (dry-run) and assert exit 0\n` +
+      `3. Run ansible-playbook for real and assert exit 0 (first run)\n` +
+      `4. Run ansible-playbook a second time and assert changed=0 (idempotency check)\n` +
+      `5. Verify post-conditions: assert files exist, services are in expected state, etc. based on what the original script does\n` +
+      `6. Include a cleanup/teardown section that reverses any side effects\n` +
+      `7. Print a PASS/FAIL summary at the end\n` +
+      (langHints.test ? `\nSource language test guidance:\n${langHints.test}\n` : '') +
+      `\nOutput ONLY raw bash code, no fences, no preamble.\n\nOriginal ${srcLabel} script:\n${code}`
+    : `Write a ${testLang === 'python3' ? 'pytest' : testLang === 'go' ? 'Go test' : 'bash'} test script that verifies a ${tgtLabel} conversion of this ${srcLabel} script preserves all original functionality.\n` +
+      (langHints.test ? `\nLanguage-specific test guidance:\n${langHints.test}\n` : '') +
+      `\nRequirements:\n- Test every distinct behavior and edge case\n- Use clear, descriptive test names\n- Include setup and teardown where needed\n- Write the complete script — do not truncate\n\nOutput ONLY raw code, no fences, no preamble.\n\nOriginal script:\n${code}`;
   const tests = await callAI(SYS_TEST, testPrompt, t => setOutput('tests', t, false));
   setDot('tests', 'dot-done');
   if (baseName) await saveFile(baseName, '_test.' + testExt, tests);
@@ -1464,7 +1519,15 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   const convertPrompt =
     `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY the converted code — no backtick fences, no preamble, no explanation. Write the complete output, never truncate.\n` +
     (tgt === 'ansible'
-      ? `\nAnsible rules:\n- Use official Ansible modules, not shell/command, wherever a module exists\n- Every task must have a descriptive name:\n- Use vars: for all hardcoded values\n- Prefer idempotent parameters (state:, creates:, removes:) over imperative calls\n- Add hosts:, gather_facts:, and become: at the top appropriate for the target OS\n- Use block: / rescue: / always: for error handling\n`
+      ? `\nAnsible Automation Platform (AAP) rules:\n` +
+        `- Use FULLY QUALIFIED COLLECTION NAMES (FQCN) for every module — ansible.builtin.copy not copy, ansible.builtin.service not service, ansible.builtin.file not file, ansible.builtin.shell not shell, etc.\n` +
+        `- Every task must have a clear, descriptive name\n` +
+        `- Declare all hardcoded values in vars: at the top of the play — use the proposed variable names if provided\n` +
+        `- Prefer idempotent parameters (state:, creates:, removes:) over imperative shell calls\n` +
+        `- Structure: play name:, hosts: all, gather_facts: yes, become: yes, vars:, tasks:, then handlers: if needed\n` +
+        `- Use handlers: for service restart/reload operations; add notify: to the tasks that trigger them\n` +
+        `- Use block: / rescue: / always: for error handling\n` +
+        `- This playbook will run in AAP — ensure it is idempotent and uses supported module FQCNs\n`
       : '') +
     (tgt === 'python3' ? '\n- Use argparse for CLI args\n- Use subprocess.run() for shell commands\n' : '') +
     (langHints.convert ? `\n${langHints.convert}\n` : '') +

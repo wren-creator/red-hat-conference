@@ -244,7 +244,7 @@ Extended documentation lives in the `docs/` directory:
 
 See `docs/ROADMAP.md` for the full prioritized list.
 
-### Completed (13 of 18 roadmap items)
+### Completed (15 of 18 roadmap items)
 
 - [x] **WMI/CIM detection** — real-time pre-flight scan flags `Get-WmiObject` / `Get-CimInstance` before conversion runs
 - [x] **Windows credential handling** — detects `Get-Credential`, `PSCredential`, `ConvertTo-SecureString`; maps to Ansible Vault references with setup TODOs
@@ -257,16 +257,26 @@ See `docs/ROADMAP.md` for the full prioritized list.
 - [x] **Test coverage report** — maps each behavior in the original script to the generated tests; shows covered/total count
 - [x] **Task confidence scoring** — green/amber/red badge per Ansible task based on how directly it mapped from the source language
 - [x] **ansible-lint validation** — live server mode via `launch.py` runs linting inline; copy-paste mode for raw file use; both render structured violation rows
-- [x] **Sovereign AI mode** — Settings toggle locks to local Ollama; model recommendations with one-click pull commands; pre-flight check before every run
+- [x] **Sovereign AI mode** — Settings toggle locks to local Ollama; model recommendations with one-click pull commands; pre-flight check before every run; full setup guide at [docs/SOVEREIGN.md](docs/SOVEREIGN.md)
+- [x] **Script chunking** — scripts over ~1,500 tokens are automatically split into chunks, processed section by section, and merged; transparent to the user
+- [x] **Ansible Automation Platform (AAP) compatibility** — all converted Ansible output uses FQCN module names (`ansible.builtin.*`), populates `vars:` from extracted variables, generates handlers for service operations, and includes a project layout comment for AAP deployment
 - [x] **Codebase restructure** — split from a 2,599-line monolith into `index.html` (markup), `style.css`, and `app.js` for maintainability
 
 ### Up next
 
 - [ ] **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for complex scripts
-- [ ] **Script chunking** — split 1000+ line scripts into logical sections, convert each independently, stitch output
 - [ ] **Export to ZIP / PR** — bundle converted file, test script, and docs for download or push directly to a GitHub branch
 - [ ] **Multi-file dependency awareness** — detect sourced scripts during batch processing and convert them together
 - [ ] **Before/after parity check** and **test execution harness** — require a script execution environment; planned for the Node.js version
+
+### Known Limitations
+
+See `docs/ROADMAP.md` for the full limitations tracking table. Short version:
+
+- **COBOL** — copybook handling and VSAM I/O not yet reliable; limited to simple single-file programs
+- **REXX** — host environment calls (`ADDRESS TSO/ISPF/CMS/CP`) produce TODO markers with no guidance; complex EXECIO patterns unreliable
+- **Complex Bash** — `eval`, dynamic variable names `${!var}`, and process substitution `<()` cannot be cleanly converted; complexity scorer flags them but offers no fix path
+- **Ansible for application logic** — scripts with heavy algorithmic logic or string processing produce `ansible.builtin.shell`-heavy output; Ansible is not the right target for these cases
 
 ---
 

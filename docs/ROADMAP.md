@@ -30,7 +30,7 @@
 
 | # | Feature | Priority | Integration |
 |---|---|---|---|
-| 5 | **Variable extraction pass** — dedicated pre-conversion step identifying all hardcoded values and proposing a variable naming scheme before conversion | High | 🟢 Easy |
+| 5 | **Variable extraction pass** — dedicated pre-conversion step identifying all hardcoded values and proposing a variable naming scheme before conversion | High | ✅ Done |
 | 6 | **Idempotency scoring** — post-conversion assessment of how idempotent the Ansible output actually is; flags tasks that remain imperative | High | 🟢 Easy |
 | 7 | **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for scripts above a complexity threshold | Medium | 🔴 Hard |
 | 8 | **Multi-file dependency awareness** — detect that script B sources script A during batch processing and convert them together rather than independently | Medium | 🔴 Hard |
@@ -75,7 +75,7 @@
 | # | Feature | Notes |
 |---|---|---|
 | 4 | Iterative refinement ("Fix this" input) | Add a textarea + re-run button below the converted output; inject error context into conversion prompt |
-| 5 | Variable extraction pass | New pipeline step before conversion; prompt-only change |
+| 5 | ~~Variable extraction pass~~ | ✅ Done — runs as step 2.5 in both single and chunked pipelines |
 | 6 | Idempotency scoring | Post-conversion callAI assessment; same pattern as complexity scorer |
 | 12 | Annotation mode | Prompt instruction toggle; add a checkbox to Settings |
 | 16 | Windows credential handling | Add to `LANG_HINTS.powershell.convert`; prompt-only |
@@ -102,6 +102,22 @@
 | 11 | Test execution harness | Docker-based runner; backend work |
 | 15 | Export to PR | GitHub API integration; needs auth and token handling |
 | 18 | Sovereign AI mode | Infrastructure + model selection + configuration guide |
+
+---
+
+## Known Limitations (Active Tracking)
+
+These are confirmed gaps in the current implementation. They are not aspirational roadmap items — they are things that break or produce unreliable output today.
+
+| # | Limitation | Severity | Path to resolution |
+|---|---|---|---|
+| L1 | **COBOL — copybooks unresolved** | High | COPY directives cannot be followed without the copybook source; always inserts TODO. Validated conversion requires copybook-aware pre-processing before the app can handle it. |
+| L2 | **COBOL — VSAM, file I/O** | High | FILE SECTION / OPEN / READ / WRITE operations are partially mapped but complex multi-file COBOL programs produce unreliable output. Currently limited to simple single-file programs. |
+| L3 | **REXX — host environment calls** | High | ADDRESS TSO, ADDRESS ISPF, ADDRESS CMS/CP have no Linux equivalent. The app inserts TODO markers but cannot guide the user on what to do next for mainframe-specific host commands. |
+| L4 | **REXX — EXECIO file I/O** | Medium | EXECIO * DISKR/DISKW patterns are mapped but edge cases around stem variable handling produce incorrect output for complex EXECIO usage. |
+| L5 | **Bash — eval and dynamic variables** | Medium | `eval`, dynamic variable names (`${!varname}`), and process substitution `<()` cannot be reliably converted. The complexity scorer flags these but there is no mitigation path — the user gets TODO markers and is left without guidance. |
+| L6 | **Ansible — application-layer logic** | Medium | Scripts with heavy string processing, algorithmic logic, or complex data transformation produce Ansible output with excessive `ansible.builtin.shell` tasks rather than proper module usage. The idempotency scorer flags this but offers no fix. |
+| L7 | **Ansible — handlers in chunked output** | Low | When processing large scripts in chunks, handler definitions requested in chunk prompts may be duplicated across chunks or placed incorrectly. Manual review of the merged handlers section is required. |
 
 ---
 
