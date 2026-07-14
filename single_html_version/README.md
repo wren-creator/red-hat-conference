@@ -157,6 +157,8 @@ OLLAMA_ORIGINS="https://your-origin.com" ollama serve
 
 The app will auto-detect your running Ollama instance, load available models into the dropdown, and surface a fix command if CORS is blocking the connection. Use the **Diagnostics** panel → **Auto-Detect** tab to verify Ollama status before a demo.
 
+For air-gapped/regulated environments, enable **Sovereign AI Mode** in Settings to lock the app to Ollama and get model recommendations sized to your hardware — see [docs/SOVEREIGN.md](docs/SOVEREIGN.md).
+
 ### Anthropic Claude API
 
 Fastest results, best quality on complex legacy code. Requires an API key from [console.anthropic.com](https://console.anthropic.com). Enter it in the Settings panel — it is held in memory only and cleared when the tab closes. Supports up to 200K token context window.
@@ -277,7 +279,7 @@ The `scripts/` directory contains supporting tooling:
 - **Ansible conversion** works best for infrastructure automation scripts. Application-layer logic (complex string processing, algorithmic code) maps poorly to Ansible's declarative model and will generate `TODO` markers accordingly.
 - **Test script generation** is based on behavioral inference from the source code, not execution. Generated tests should be reviewed and run in a safe environment before being used to gate any deployment.
 - **Ollama context limits** — the app auto-detects your model's context window. Scripts that exceed it are automatically processed in chunks (see Settings Panel above), or you can switch to a cloud provider for very large inputs.
-- The **sovereign AI option** is not yet implemented as a simplified configuration. Ollama support is available but the model recommendations and single-command setup for cost-sensitive or air-gapped environments are still being built out.
+- The **sovereign AI option** locks the app to local Ollama with recommended models and a pre-flight connectivity check — see [docs/SOVEREIGN.md](docs/SOVEREIGN.md) for hardware sizing and air-gapped transfer instructions. A fully scripted offline installer (Ollama + model + app in one command) is not yet built.
 
 ---
 
@@ -285,7 +287,7 @@ The `scripts/` directory contains supporting tooling:
 
 - [ ] Validated COBOL support with copybook handling
 - [ ] Validated REXX support with host command environment awareness
-- [ ] Sovereign AI configuration guide with recommended local models
+- [x] Sovereign AI configuration guide with recommended local models
 - [ ] Simplified single-command setup for offline/air-gapped environments
 - [ ] Extended test script generation with actual execution harness
 - [ ] Additional legacy languages (JCL, SAS, RPG — under consideration)
