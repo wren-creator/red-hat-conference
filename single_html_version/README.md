@@ -157,7 +157,7 @@ OLLAMA_ORIGINS="https://your-origin.com" ollama serve
 
 The app will auto-detect your running Ollama instance, load available models into the dropdown, and surface a fix command if CORS is blocking the connection. Use the **Diagnostics** panel → **Auto-Detect** tab to verify Ollama status before a demo.
 
-For air-gapped/regulated environments, enable **Sovereign AI Mode** in Settings to lock the app to Ollama and get model recommendations sized to your hardware — see [docs/SOVEREIGN.md](docs/SOVEREIGN.md).
+For air-gapped/regulated environments, enable **Sovereign AI Mode** in Settings to lock the app to Ollama and get model recommendations sized to your hardware — see [docs/SOVEREIGN.md](../docs/SOVEREIGN.md).
 
 ### Anthropic Claude API
 
@@ -223,7 +223,7 @@ Runs automatically when the panel opens and after every conversion. Checks all f
 **Activity Log**
 Accumulates in the background from page load regardless of whether the panel is open. Every API call is logged with timestamp, level (OK / WARN / ERR / INFO), message, and duration. Export the full log to a `.txt` file for post-demo review or sharing with collaborators.
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for a full guide on interpreting diagnostics output and resolving common issues.
+See [TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md) for a full guide on interpreting diagnostics output and resolving common issues.
 
 ---
 
@@ -243,7 +243,7 @@ Scripts flagged red will have `# TODO: MANUAL REVIEW` comments inserted at exact
 
 ## Ollama ModelFiles
 
-The `model-files/` directory contains custom Ollama ModelFiles used in the live demos. These models are purpose-built for:
+The `Model-files/` directory contains custom Ollama ModelFiles used in the live demos. These models are purpose-built for:
 
 - Legacy script analysis
 - YAML and structured data generation
@@ -254,7 +254,7 @@ The `model-files/` directory contains custom Ollama ModelFiles used in the live 
 **Build and run the legacy-to-Ansible model:**
 
 ```bash
-ollama create legacy2ansible -f model-files/legacy2ansible.modelfile
+ollama create legacy2ansible -f ../Model-files/legacy2ansible.modelfile
 ollama run legacy2ansible
 ```
 
@@ -279,7 +279,7 @@ The `scripts/` directory contains supporting tooling:
 - **Ansible conversion** works best for infrastructure automation scripts. Application-layer logic (complex string processing, algorithmic code) maps poorly to Ansible's declarative model and will generate `TODO` markers accordingly.
 - **Test script generation** is based on behavioral inference from the source code, not execution. Generated tests should be reviewed and run in a safe environment before being used to gate any deployment.
 - **Ollama context limits** — the app auto-detects your model's context window. Scripts that exceed it are automatically processed in chunks (see Settings Panel above), or you can switch to a cloud provider for very large inputs.
-- The **sovereign AI option** locks the app to local Ollama with recommended models and a pre-flight connectivity check — see [docs/SOVEREIGN.md](docs/SOVEREIGN.md) for hardware sizing and air-gapped transfer instructions. A fully scripted offline installer (Ollama + model + app in one command) is not yet built.
+- The **sovereign AI option** locks the app to local Ollama with recommended models and a pre-flight connectivity check — see [docs/SOVEREIGN.md](../docs/SOVEREIGN.md) for hardware sizing and air-gapped transfer instructions. A fully scripted offline installer (Ollama + model + app in one command) is not yet built.
 - **AAP roles/playbook restructuring** (opt-in, batch mode only — enable "Structure Ansible batch output as AAP roles" in Settings) detects one queued script sourcing/calling another (Bash/csh, Perl, PowerShell only) and generates a `roles/` + `playbooks/` + `collections/requirements.yml` project layout instead of independent flat playbooks. This is a heuristic based on static regex pattern-matching — it can under-detect (dynamic/variable-based invocations aren't resolved) but is designed to never fabricate a false relationship. Nested call chains are flattened to a two-level structure, and role-fragment files skip automated idempotency/confidence scoring. Always review the generated project before use in AAP.
 
 ---

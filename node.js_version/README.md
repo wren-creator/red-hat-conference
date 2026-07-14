@@ -52,7 +52,7 @@ on your local machine — no key is ever sent to the frontend.
   5. Set the model name to match what you pulled
 
 To use your custom modelfile from the repo:
-  ollama create legacy2ansible -f model-files/legacy2ansible.modelfile
+  ollama create legacy2ansible -f ../Model-files/legacy2ansible.modelfile
   # Then set model name to "legacy2ansible" in Settings
 
 ---
