@@ -15,6 +15,7 @@ const TGT_EXT={ansible:'yml',python3:'py',terraform:'tf',go:'go',powershell:'ps1
 const LEGACY_EXTS=['sh','bash','pl','pm','cob','cbl','f','for','f90','f95','awk','tcl','csh','ksh','zsh','rex','rexx','exec','ps1','psm1','psd1'];
 
 let mode='single', queue=[], outputDirHandle=null, batchResults=[];
+let groupedRunAccumulator = { texts: [], groupIds: new Set() };
 let provider='ollama';
 let lastConversionContext = null;
 let conversionHistory = [], historySeq = 0;
@@ -34,6 +35,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const gm = localStorage.getItem('rs_gemini_model'); if(gm) document.getElementById('gemini-model').value=gm;
   const oi = localStorage.getItem('rs_openai_model'); if(oi) document.getElementById('openai-model').value=oi;
   const am = localStorage.getItem('rs_anthropic_model'); if(am) document.getElementById('anthropic-model').value=am;
+  const sar = localStorage.getItem('rs_structure_as_roles'); if(sar) document.getElementById('structure-as-roles').value=sar;
   const savedSov = localStorage.getItem('rs_sovereign') === 'true';
   if (savedSov) setSovereignMode(true);
   else setProvider(savedProv);
@@ -530,6 +532,7 @@ function savePrefs() {
   localStorage.setItem('rs_gemini_model', document.getElementById('gemini-model').value);
   localStorage.setItem('rs_openai_model', document.getElementById('openai-model').value);
   localStorage.setItem('rs_sovereign', sovereignMode ? 'true' : 'false');
+  localStorage.setItem('rs_structure_as_roles', document.getElementById('structure-as-roles').value);
 }
 
 function toggleVis(id, btn) {
@@ -657,7 +660,23 @@ function splitIntoChunks(code, maxChars) {
   return chunks.filter(c => c.trim());
 }
 
-function buildMergedConversion(parts, tgt, srcLabel, N, extractedVars = []) {
+function buildMergedConversion(parts, tgt, srcLabel, N, extractedVars = [], fragmentMode = false) {
+  if (tgt === 'ansible' && fragmentMode) {
+    const header =
+      `---\n` +
+      `# Rosetta Stone — role task fragment converted from ${srcLabel}${N > 1 ? ` (${N} chunks merged)` : ''}\n` +
+      `# Intended for roles/<name>/tasks/main.yml — no play wrapper, tasks at column 0\n` +
+      (extractedVars.length
+        ? `# Suggested values (add to roles/<name>/vars/main.yml if reused):\n` +
+          extractedVars.map(v => `#   ${v.name}: ${JSON.stringify(v.value)}  # ${v.type}`).join('\n') + '\n'
+        : '');
+    const body = parts.map((p, i) => {
+      const marker = N > 1 ? `# === Chunk ${i + 1} of ${N} ===` : '';
+      const trimmed = p.trim();
+      return marker ? marker + '\n' + trimmed : trimmed;
+    }).join('\n\n');
+    return header + body;
+  }
   if (tgt === 'ansible') {
     const varsLines = extractedVars.length
       ? extractedVars.map(v => `    ${v.name}: ${JSON.stringify(v.value)}  # ${v.type}`).join('\n')
@@ -687,7 +706,7 @@ function buildMergedConversion(parts, tgt, srcLabel, N, extractedVars = []) {
   return header + parts.map((p, i) => N > 1 ? `${c} === Chunk ${i + 1} of ${N} ===\n${p.trim()}` : p.trim()).join('\n\n');
 }
 
-async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
+async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx, relationshipContext = null) {
   const src = document.getElementById('src-lang').value;
   const ext = TGT_EXT[tgt];
   const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
@@ -812,6 +831,12 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
   const manualNote = complexity.manual_required
     ? '\nIMPORTANT: Insert # TODO: MANUAL REVIEW with a specific reason at every location requiring human intervention.'
     : '';
+  const relRole = relationshipContext?.role || null;
+  const siblingGuidance = (relationshipContext?.siblingRoles?.length)
+    ? `\nThis script was detected invoking sibling scripts that are being converted into separate Ansible roles. Do NOT reimplement their logic inline — replace each call with a task using "ansible.builtin.include_role: name: <role_name>":\n` +
+      relationshipContext.siblingRoles.map(s => `  - ${s.name} → include_role name: ${s.roleName}`).join('\n') + '\n' +
+      `Keep this script's own logic that is not delegated to a sibling as normal inline tasks.\n`
+    : '';
 
   const convertedParts = [];
   for (let i = 0; i < N; i++) {
@@ -827,6 +852,7 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
         `- Prefer idempotent parameters (state:, creates:, removes:) over imperative shell calls\n` +
         `- Use block: / rescue: / always: for error handling\n` +
         `- Use notify: to trigger handlers for service restarts; output handler definitions as a comment block at the end of your chunk marked "# HANDLERS:"\n` +
+        siblingGuidance +
         (langHints.convert ? `\n${langHints.convert}\n` : '') +
         varHint + annotationNote + manualNote +
         `\n\nChunk ${i + 1} of ${N}:\n${chunks[i]}`;
@@ -839,14 +865,16 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
         varHint + annotationNote + manualNote +
         `\n\nChunk ${i + 1} of ${N}:\n${chunks[i]}`;
     }
+    const isMemberFragment = tgt === 'ansible' && relRole === 'member';
     const part = await callAI(SYS_CONVERT, prompt, t => {
-      setOutput('converted', buildMergedConversion([...convertedParts, t], tgt, srcLabel, N, extractedVars), false);
+      setOutput('converted', buildMergedConversion([...convertedParts, t], tgt, srcLabel, N, extractedVars, isMemberFragment), false);
     }, numCtx);
     convertedParts.push(part);
-    setOutput('converted', buildMergedConversion(convertedParts, tgt, srcLabel, N, extractedVars), false);
+    setOutput('converted', buildMergedConversion(convertedParts, tgt, srcLabel, N, extractedVars, isMemberFragment), false);
   }
 
-  const converted = buildMergedConversion(convertedParts, tgt, srcLabel, N, extractedVars);
+  const isMemberFragment = tgt === 'ansible' && relRole === 'member';
+  const converted = buildMergedConversion(convertedParts, tgt, srcLabel, N, extractedVars, isMemberFragment);
 
   const looksIncomplete = t => {
     const s = t.trimEnd();
@@ -861,12 +889,15 @@ async function processOneChunked(code, srcLabel, tgt, tgtLabel, baseName, numCtx
   }
 
   setDot('converted', (complexity.manual_required || wasTruncated) ? 'dot-warn' : 'dot-done');
-  if (baseName) await saveFile(baseName, '.' + ext, converted);
+  if (baseName) {
+    if (relationshipContext) await saveGroupedOutput(baseName, relationshipContext, converted);
+    else await saveFile(baseName, '.' + ext, converted);
+  }
 
-  // ── Step 4: Idempotency + confidence + validate (Ansible only) ────
+  // ── Step 4: Idempotency + confidence + validate (Ansible only, skipped for role fragments) ─
   let idempotency = null;
   let confidence = [];
-  if (tgt === 'ansible' && converted && !wasTruncated) {
+  if (tgt === 'ansible' && converted && !wasTruncated && relRole !== 'member') {
     showStatus('Scoring idempotency…', true);
     try {
       idempotency = await assessIdempotency(converted);
@@ -1225,7 +1256,11 @@ function renderQueue() {
   const stTxt = { pending: 'queued', running: 'processing…', done: 'done', warn: 'needs review', error: 'error' };
   queue.forEach((f, i) => {
     const row = document.createElement('div'); row.className = 'queue-item';
+    const groupBadge = f.relationship
+      ? `<span class="qi-group-badge" title="${escHtml(f.relationship.groupId)}">${f.relationship.role === 'orchestrator' ? '▶ role group' : '↳ role'}</span>`
+      : '';
     row.innerHTML = `<span class="fname" title="${f.name}">${f.name}</span>` +
+      groupBadge +
       `<span class="qi-badge ${stMap[f.status]}">${stTxt[f.status]}</span>` +
       (f.status === 'pending' ? `<button class="qi-remove" onclick="removeFromQueue(${i})" aria-label="Remove">&times;</button>` : '');
     list.appendChild(row);
@@ -1257,6 +1292,192 @@ async function pickOutputDir() {
 async function saveFile(base, suffix, content) {
   if (!outputDirHandle) return;
   try { const fh = await outputDirHandle.getFileHandle(base + suffix, { create: true }); const w = await fh.createWritable(); await w.write(content); await w.close(); } catch (e) { console.warn('Save failed:', e); }
+}
+
+// ─── Script relationship detection (AAP roles) ─────────────────────
+// Heuristic, regex-based detection of one queued script sourcing/calling
+// another. Never fabricates a relationship — unresolved dynamic
+// invocations (variables, not literal filenames) are reported separately
+// and do not create graph edges.
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function shellRelationPatterns(fn, stem) {
+  const targets = stem && stem.length >= 3 ? [fn, stem] : [fn];
+  const pats = [];
+  targets.forEach(t => {
+    const e = escapeRegex(t);
+    pats.push({ pattern: 'source', re: new RegExp(`\\bsource\\s+(?:['"])?(?:\\.{1,2}\\/)?\\S*\\b${e}\\b`, 'i') });
+    pats.push({ pattern: 'dot-source', re: new RegExp(`(?:^|[;&|\\n])\\s*\\.\\s+(?:['"])?(?:\\.{1,2}\\/)?\\S*\\b${e}\\b`, 'i') });
+    pats.push({ pattern: 'direct-exec', re: new RegExp(`\\.\\/(?:\\S*\\/)?${e}\\b`, 'i') });
+    pats.push({ pattern: 'interpreter', re: new RegExp(`\\b(?:bash|sh|ksh|csh)\\s+(?:['"])?(?:\\S*\\/)?${e}\\b`, 'i') });
+    pats.push({ pattern: 'backtick', re: new RegExp('`[^`]*\\b' + e + '\\b[^`]*`', 'i') });
+    pats.push({ pattern: 'subshell', re: new RegExp(`\\$\\([^)]*\\b${e}\\b[^)]*\\)`, 'i') });
+    pats.push({ pattern: 'exec', re: new RegExp(`\\bexec\\s+(?:['"])?(?:\\S*\\/)?${e}\\b`, 'i') });
+  });
+  return pats;
+}
+
+function perlRelationPatterns(fn, stem) {
+  const e = escapeRegex(fn);
+  const pats = [
+    { pattern: 'require', re: new RegExp(`\\brequire\\s+['"]${e}['"]`, 'i') },
+    { pattern: 'do-file', re: new RegExp(`\\bdo\\s+['"]${e}['"]`, 'i') },
+    { pattern: 'system', re: new RegExp(`\\bsystem\\s*\\(\\s*['"][^'"]*\\b${e}\\b`, 'i') },
+    { pattern: 'backtick', re: new RegExp('`[^`]*\\b' + e + '\\b[^`]*`', 'i') },
+    { pattern: 'subshell', re: new RegExp(`\\$\\([^)]*\\b${e}\\b[^)]*\\)`, 'i') },
+  ];
+  return pats;
+}
+
+function powershellRelationPatterns(fn, stem) {
+  const e = escapeRegex(fn);
+  return [
+    { pattern: 'dot-source', re: new RegExp(`(?:^|[;\\n])\\s*\\.\\s+['"]?(?:\\.\\\\|\\.\\/|\\.{2}\\\\|\\.{2}\\/)?${e}['"]?`, 'im') },
+    { pattern: 'call-op', re: new RegExp(`&\\s*['"]?(?:\\.\\\\|\\.\\/)?${e}['"]?`, 'i') },
+    { pattern: 'invoke-expr', re: new RegExp(`Invoke-Expression[^\\n]*\\b${e}\\b`, 'i') },
+  ];
+}
+
+// Dynamic/unresolved invocation shapes — variable-based, cannot be tied to a
+// specific queued file. Surfaced as a warning, never as a graph edge.
+const DYNAMIC_REF_PATTERNS = {
+  bash: [/\b(?:bash|sh|ksh|csh|source|\.|exec)\s+"?\$\{?\w+\}?"?/i],
+  csh:  [/\b(?:bash|sh|ksh|csh|source|\.|exec)\s+"?\$\{?\w+\}?"?/i],
+  perl: [/\b(?:system|do|require)\s*\(?\s*\$\w+/i],
+  powershell: [/Invoke-Expression\s+\$\w+/i, /&\s*\$\w+/i],
+};
+
+function sanitizeRoleName(filename, usedNames) {
+  let base = filename.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!base) base = 'role';
+  if (/^[0-9]/.test(base)) base = 'r_' + base;
+  let name = base, n = 2;
+  while (usedNames.has(name)) name = `${base}_${n++}`;
+  usedNames.add(name);
+  return name;
+}
+
+function detectScriptRelationships(queue, src) {
+  const familyFns = { bash: shellRelationPatterns, csh: shellRelationPatterns, perl: perlRelationPatterns, powershell: powershellRelationPatterns };
+  const buildPatterns = familyFns[src];
+  const dynamicPatterns = DYNAMIC_REF_PATTERNS[src] || [];
+  const dynamicRefs = [];
+
+  if (!buildPatterns) {
+    return { groups: queue.map(f => ({ groupId: null, files: [{ name: f.name, role: 'standalone', roleName: null }], edges: [] })), dynamicRefs };
+  }
+
+  const n = queue.length;
+  const edges = [];
+  for (let i = 0; i < n; i++) {
+    const f = queue[i];
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const g = queue[j];
+      const stem = g.name.replace(/\.[^.]+$/, '');
+      const patterns = buildPatterns(g.name, stem);
+      const hit = patterns.find(p => p.re.test(f.content));
+      if (hit) edges.push({ from: f.name, to: g.name, pattern: hit.pattern });
+    }
+    if (dynamicPatterns.some(re => re.test(f.content))) {
+      const re = dynamicPatterns.find(r => r.test(f.content));
+      const m = f.content.match(re);
+      dynamicRefs.push({ file: f.name, snippet: m ? m[0] : '' });
+    }
+  }
+
+  // Union-find over queue indices using the detected edges.
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+  const nameIdx = new Map(queue.map((f, i) => [f.name, i]));
+  edges.forEach(e => union(nameIdx.get(e.from), nameIdx.get(e.to)));
+
+  const componentMap = new Map(); // root -> indices[]
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!componentMap.has(r)) componentMap.set(r, []);
+    componentMap.get(r).push(i);
+  }
+
+  const usedNames = new Set();
+  const groups = [];
+  let gid = 1;
+  componentMap.forEach(indices => {
+    const files = indices.map(i => queue[i]);
+    const fileNames = new Set(files.map(f => f.name));
+    const compEdges = edges.filter(e => fileNames.has(e.from) && fileNames.has(e.to));
+
+    if (files.length === 1) {
+      groups.push({ groupId: null, files: [{ name: files[0].name, role: 'standalone', roleName: null }], edges: [] });
+      return;
+    }
+
+    const groupId = `grp_${gid++}`;
+    const outgoing = new Set(compEdges.map(e => e.from));
+    const incoming = new Set(compEdges.map(e => e.to));
+    const fileEntries = files.map(f => {
+      const isOrchestrator = outgoing.has(f.name) && !incoming.has(f.name);
+      const role = isOrchestrator ? 'orchestrator' : 'member';
+      const roleName = role === 'member' ? sanitizeRoleName(f.name, usedNames) : null;
+      return { name: f.name, role, roleName };
+    });
+    groups.push({ groupId, files: fileEntries, edges: compEdges });
+  });
+
+  return { groups, dynamicRefs };
+}
+
+function attachRelationshipsToQueue(queue, relResult) {
+  const byName = new Map();
+  relResult.groups.forEach(g => g.files.forEach(fe => byName.set(fe.name, { group: g, fileEntry: fe })));
+  queue.forEach(f => {
+    const entry = byName.get(f.name);
+    if (!entry || entry.fileEntry.role === 'standalone') { f.relationship = null; return; }
+    const { group, fileEntry } = entry;
+    const siblingRoles = group.edges
+      .filter(e => e.from === f.name)
+      .map(e => {
+        const target = group.files.find(x => x.name === e.to);
+        return { name: e.to, roleName: target ? target.roleName : null, pattern: e.pattern };
+      })
+      .filter(s => s.roleName);
+    f.relationship = { groupId: group.groupId, role: fileEntry.role, roleName: fileEntry.roleName, siblingRoles };
+  });
+}
+
+async function saveGroupedOutput(baseName, rel, content) {
+  if (!outputDirHandle || !rel) return;
+  try {
+    if (rel.role === 'member') {
+      const rolesDir = await outputDirHandle.getDirectoryHandle('roles', { create: true });
+      const roleDir  = await rolesDir.getDirectoryHandle(rel.roleName, { create: true });
+      const tasksDir = await roleDir.getDirectoryHandle('tasks', { create: true });
+      const fh = await tasksDir.getFileHandle('main.yml', { create: true });
+      const w = await fh.createWritable(); await w.write(content); await w.close();
+    } else if (rel.role === 'orchestrator') {
+      const pbDir = await outputDirHandle.getDirectoryHandle('playbooks', { create: true });
+      const fh = await pbDir.getFileHandle(baseName + '.yml', { create: true });
+      const w = await fh.createWritable(); await w.write(content); await w.close();
+    }
+    groupedRunAccumulator.texts.push(content);
+    groupedRunAccumulator.groupIds.add(rel.groupId);
+  } catch (e) { console.warn('Grouped save failed:', e); }
+}
+
+async function writeCollectionsRequirements(root, allConvertedText) {
+  const found = new Set();
+  const re = /\b([a-z0-9_]+\.[a-z0-9_]+)\.[a-z0-9_]+\b/g;
+  let m;
+  while ((m = re.exec(allConvertedText))) { if (m[1] !== 'ansible.builtin') found.add(m[1]); }
+  const lines = ['---', 'collections:'];
+  if (found.size) [...found].sort().forEach(ns => lines.push(`  - name: ${ns}`));
+  else lines.push('  # No additional collections required — only ansible.builtin (bundled with ansible-core) was used.');
+  try {
+    const dir = await root.getDirectoryHandle('collections', { create: true });
+    const fh = await dir.getFileHandle('requirements.yml', { create: true });
+    const w = await fh.createWritable(); await w.write(lines.join('\n') + '\n'); await w.close();
+  } catch (e) { console.warn('collections/requirements.yml save failed:', e); }
 }
 
 // ─── Step-specific system prompts ────────────────────────────────
@@ -1416,7 +1637,7 @@ async function assessComplexity(code, srcLabel, tgtLabel) {
   catch { return { score: 40, level: 'medium', label: 'Unknown', issues: ['Could not assess complexity automatically.'], manual_required: false }; }
 }
 
-async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
+async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx, relationshipContext = null) {
   const src = document.getElementById('src-lang').value;
   const ext = TGT_EXT[tgt];
   const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
@@ -1502,8 +1723,11 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   } catch (e) {
     diagAddLog('WARN', 'Variable extraction failed: ' + e.message);
   }
+  const relRole = relationshipContext?.role || null;
   const varHint = extractedVars.length
-    ? `\nProposed variable names for hardcoded values (use these in vars: or as named constants):\n` +
+    ? (relRole === 'member'
+        ? `\nProposed variable names for hardcoded values (reference as a comment; add to roles/${relationshipContext.roleName}/vars/main.yml if reused):\n`
+        : `\nProposed variable names for hardcoded values (use these in vars: or as named constants):\n`) +
       extractedVars.map(v => `  ${JSON.stringify(v.value)} → ${v.name} (${v.type})`).join('\n') + '\n'
     : '';
 
@@ -1516,10 +1740,22 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   const manualNote = complexity.manual_required
     ? '\nIMPORTANT: Insert a # TODO: MANUAL REVIEW comment with a specific reason at every location requiring human intervention.'
     : '';
-  const convertPrompt =
-    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY the converted code — no backtick fences, no preamble, no explanation. Write the complete output, never truncate.\n` +
-    (tgt === 'ansible'
-      ? `\nAnsible Automation Platform (AAP) rules:\n` +
+  const siblingGuidance = (relationshipContext?.siblingRoles?.length)
+    ? `\nThis script was detected invoking sibling scripts that are being converted into separate Ansible roles. Do NOT reimplement their logic inline — replace each call with a task using "ansible.builtin.include_role: name: <role_name>":\n` +
+      relationshipContext.siblingRoles.map(s => `  - ${s.name} → include_role name: ${s.roleName}`).join('\n') + '\n' +
+      `Keep this script's own logic that is not delegated to a sibling as normal inline tasks.\n`
+    : '';
+  const ansibleBlock = tgt !== 'ansible' ? '' :
+    relRole === 'member'
+      ? `\nAnsible Automation Platform (AAP) role-fragment rules:\n` +
+        `- This output will be saved directly as an existing role's tasks/main.yml — output ONLY a YAML tasks list, starting with "---" then task items ("- name: ...") at 0-space indent.\n` +
+        `- Do NOT include hosts:, gather_facts:, become:, vars:, or a top-level "tasks:" key — this file IS the tasks list, nothing else.\n` +
+        `- Use FULLY QUALIFIED COLLECTION NAMES (FQCN) for every module — ansible.builtin.copy not copy, ansible.builtin.service not service, ansible.builtin.file not file, ansible.builtin.shell not shell, etc.\n` +
+        `- Every task must have a clear, descriptive name\n` +
+        `- Prefer idempotent parameters (state:, creates:, removes:) over imperative shell calls\n` +
+        `- Use block: / rescue: / always: for error handling\n` +
+        siblingGuidance
+      : `\nAnsible Automation Platform (AAP) rules:\n` +
         `- Use FULLY QUALIFIED COLLECTION NAMES (FQCN) for every module — ansible.builtin.copy not copy, ansible.builtin.service not service, ansible.builtin.file not file, ansible.builtin.shell not shell, etc.\n` +
         `- Every task must have a clear, descriptive name\n` +
         `- Declare all hardcoded values in vars: at the top of the play — use the proposed variable names if provided\n` +
@@ -1527,8 +1763,11 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
         `- Structure: play name:, hosts: all, gather_facts: yes, become: yes, vars:, tasks:, then handlers: if needed\n` +
         `- Use handlers: for service restart/reload operations; add notify: to the tasks that trigger them\n` +
         `- Use block: / rescue: / always: for error handling\n` +
-        `- This playbook will run in AAP — ensure it is idempotent and uses supported module FQCNs\n`
-      : '') +
+        `- This playbook will run in AAP — ensure it is idempotent and uses supported module FQCNs\n` +
+        siblingGuidance;
+  const convertPrompt =
+    `Convert this ${srcLabel} script to ${tgtLabel}. Output ONLY the converted code — no backtick fences, no preamble, no explanation. Write the complete output, never truncate.\n` +
+    ansibleBlock +
     (tgt === 'python3' ? '\n- Use argparse for CLI args\n- Use subprocess.run() for shell commands\n' : '') +
     (langHints.convert ? `\n${langHints.convert}\n` : '') +
     varHint +
@@ -1554,12 +1793,15 @@ async function processOne(code, srcLabel, tgt, tgtLabel, baseName, numCtx) {
   }
 
   setDot('converted', (complexity.manual_required || wasTruncated) ? 'dot-warn' : 'dot-done');
-  if (baseName) await saveFile(baseName, '.' + ext, converted);
+  if (baseName) {
+    if (relationshipContext) await saveGroupedOutput(baseName, relationshipContext, converted);
+    else await saveFile(baseName, '.' + ext, converted);
+  }
 
-  // ── Step 4: Idempotency scoring (Ansible only) ───────────────────
+  // ── Step 4: Idempotency scoring (Ansible only, skipped for role fragments) ─
   let idempotency = null;
   let confidence = [];
-  if (tgt === 'ansible' && converted && !wasTruncated) {
+  if (tgt === 'ansible' && converted && !wasTruncated && relRole !== 'member') {
     showStatus('Scoring idempotency…', true);
     try {
       idempotency = await assessIdempotency(converted);
@@ -2142,6 +2384,18 @@ async function runAll() {
     } else {
       if (!queue.length) { alert('No files in queue.'); btn.disabled = false; return; }
       const delay = parseInt(document.getElementById('batch-delay').value);
+      const structureAsRoles = document.getElementById('structure-as-roles').value === 'true';
+      if (structureAsRoles && tgt === 'ansible') {
+        const relResult = detectScriptRelationships(queue, src);
+        attachRelationshipsToQueue(queue, relResult);
+        relResult.dynamicRefs.forEach(d => diagAddLog('WARN', `Dynamic invocation in ${d.file} could not be resolved to a queued file: ${d.snippet.slice(0, 80)}`));
+        const nGroups = relResult.groups.filter(g => g.files.length > 1).length;
+        if (nGroups) diagAddLog('INFO', `Relationship detection: ${nGroups} multi-file group(s) found among ${queue.length} queued file(s)`);
+        renderQueue();
+      } else {
+        queue.forEach(f => { f.relationship = null; });
+      }
+      groupedRunAccumulator = { texts: [], groupIds: new Set() };
       for (let i = 0; i < queue.length; i++) {
         const f = queue[i];
         queue[i].status = 'running'; renderQueue();
@@ -2163,14 +2417,18 @@ async function runAll() {
         try {
           const base = f.name.replace(/\.[^.]+$/, '');
           const result = f.content.length > CHUNK_THRESHOLD
-            ? await processOneChunked(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx)
-            : await processOne(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx);
+            ? await processOneChunked(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx, f.relationship)
+            : await processOne(f.content, srcLabel, tgt, tgtLabel, base, ctxCheck.numCtx, f.relationship);
           queue[i].status = result.complexity.level === 'high' ? 'warn' : 'done';
           saveToHistory({ code: f.content, srcLabel, tgtLabel, ...result });
           batchResults.push({ name: f.name, ...result });
         } catch (e) { queue[i].status = 'error'; batchResults.push({ name: f.name, complexity: { score: 0, level: 'high', label: 'Error', issues: [e.message], manual_required: true } }); }
         renderQueue();
         if (delay && i < queue.length - 1) await new Promise(r => setTimeout(r, delay));
+      }
+      if (structureAsRoles && tgt === 'ansible' && outputDirHandle && groupedRunAccumulator.groupIds.size) {
+        await writeCollectionsRequirements(outputDirHandle, groupedRunAccumulator.texts.join('\n'));
+        diagAddLog('INFO', `Wrote collections/requirements.yml for ${groupedRunAccumulator.groupIds.size} group(s)`);
       }
       showStatus('Batch complete.', false);
       switchTab('docs');

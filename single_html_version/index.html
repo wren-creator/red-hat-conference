@@ -243,6 +243,14 @@
           </select>
           <p class="settings-note">When on, the converted output includes a comment after each task or block explaining which source construct it replaces and why that mapping was chosen.</p>
         </div>
+        <div class="field">
+          <label>Structure Ansible batch output as AAP roles</label>
+          <select id="structure-as-roles">
+            <option value="false" selected>Off — flat files per script (default)</option>
+            <option value="true">On — detect related scripts, generate roles/ + playbooks/ + collections/requirements.yml</option>
+          </select>
+          <p class="settings-note">Batch mode only. When on and target is Ansible, scripts that source/invoke other queued scripts (Bash/csh, Perl, PowerShell) are restructured into an Ansible Automation Platform project layout instead of independent flat playbooks. Heuristic/best-effort — always review the generated project.</p>
+        </div>
       </div>
     </div>
   </div>

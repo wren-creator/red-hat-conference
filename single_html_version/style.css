@@ -158,6 +158,7 @@
   .st-error { background: var(--bg-danger); color: var(--text-danger); }
   .qi-remove { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 18px; line-height: 1; padding: 0 2px; }
   .qi-remove:hover { color: var(--text-danger); }
+  .qi-group-badge { font-size: 10px; padding: 1px 6px; border-radius: 100px; background: var(--bg2); color: var(--text3); border: 0.5px solid var(--border); white-space: nowrap; }
 
   .out-dir-row { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; }
   .out-dir-name { font-family: var(--mono); font-size: 11px; color: var(--text3); }
