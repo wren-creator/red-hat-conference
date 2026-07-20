@@ -265,7 +265,8 @@ See `docs/ROADMAP.md` for the full prioritized list.
 
 ### Up next
 
-- [ ] **Export to ZIP / PR** — bundle converted file, test script, and docs for download or push directly to a GitHub branch
+- [ ] **Export to ZIP** — bundle converted file(s), tests, and docs into a single downloadable `.zip`; also the only path to get grouped AAP role output (`roles/`/`playbooks/`/`collections/`) out on non-Chromium browsers, since directory-write today needs the File System Access API
+- [ ] **Export to PR** — push converted output to a GitHub branch via the API and open a PR; server-side via `launch.py` so a token never sits in browser storage
 - [ ] **Before/after parity check** and **test execution harness** — require a script execution environment; planned for the Node.js version
 
 ### Known Limitations

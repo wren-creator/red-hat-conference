@@ -54,7 +54,8 @@
 | 12 | **Annotation mode** — inline comments in converted output explaining why each mapping was made; toggleable on/off | High | 🟢 Easy |
 | 13 | **Confidence scoring per task** — each converted Ansible task gets a green/amber/red confidence indicator based on how direct the mapping was | Medium | 🟡 Medium |
 | 14 | **Conversion history** — session-scoped log of every script processed with ability to flip back to a previous result without re-running | Medium | 🟡 Medium |
-| 15 | **Export to PR** — push converted file, test script, and docs directly to a GitHub branch via the API, ready for review | Low | 🔴 Hard |
+| 15 | **Export to ZIP** — bundle converted file(s), tests, and docs into a single downloadable `.zip`; for grouped/AAP-role output this is the only way to get the `roles/`/`playbooks/`/`collections/` layout out on Firefox/Safari, since directory-write today requires the Chromium-only File System Access API | High | 🟡 Medium |
+| 19 | **Export to PR** — push converted output to a GitHub branch via the API and open a PR | Low | 🔴 Hard |
 
 ---
 
@@ -89,6 +90,7 @@
 | 9 | Test coverage report | New output tab; post-test-generation assessment prompt |
 | 13 | Confidence scoring per task | Parse converted YAML, score each task block, render inline badges |
 | 14 | Conversion history | Session state array + history dropdown; no backend needed |
+| 15 | Export to ZIP | Hand-rolled ZIP writer (store method, local file headers + CRC32, no JSZip) to stay dependency-free; bundles single-file output or the full `roles/`/`playbooks/`/`collections/` AAP layout; no backend needed |
 
 ### 🔴 Hard — Requires backend, Docker, or architectural changes
 
@@ -100,8 +102,8 @@
 | 8 | ~~Multi-file dependency awareness~~ | ✅ Done — union-find grouping of sourced/called scripts into orchestrator/member roles |
 | 10 | Before/after parity check | Needs script execution environment; Docker or VM |
 | 11 | Test execution harness | Docker-based runner; backend work |
-| 15 | Export to PR | GitHub API integration; needs auth and token handling |
 | 18 | Sovereign AI mode | Infrastructure + model selection + configuration guide |
+| 19 | Export to PR | New `POST /export-pr` endpoint on `launch.py`; token read from server env var, never sent to the browser — a PAT in `localStorage` is a non-starter for this audience. Hidden/disabled in copy-paste mode (no server running). API base URL configurable, not hardcoded to `api.github.com`, so it works against GitHub Enterprise/GitLab/Gitea for air-gapped shops |
 
 ---
 
@@ -133,5 +135,5 @@ Based on effort-to-impact ratio, start here:
 
 ---
 
-*Last updated: June 2026*
+*Last updated: July 2026*
 *Built for Red Hat Conference 2026 · Atlanta*
