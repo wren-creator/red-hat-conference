@@ -244,7 +244,7 @@ Extended documentation lives in the `docs/` directory:
 
 See `docs/ROADMAP.md` for the full prioritized list.
 
-### Completed (17 of 18 roadmap items)
+### Completed (18 of 19 roadmap items)
 
 - [x] **WMI/CIM detection** — real-time pre-flight scan flags `Get-WmiObject` / `Get-CimInstance` before conversion runs
 - [x] **Windows credential handling** — detects `Get-Credential`, `PSCredential`, `ConvertTo-SecureString`; maps to Ansible Vault references with setup TODOs
@@ -262,10 +262,10 @@ See `docs/ROADMAP.md` for the full prioritized list.
 - [x] **Ansible Automation Platform (AAP) compatibility** — all converted Ansible output uses FQCN module names (`ansible.builtin.*`), populates `vars:` from extracted variables, generates handlers for service operations, and includes a project layout comment for AAP deployment
 - [x] **Codebase restructure** — split from a 2,599-line monolith into `index.html` (markup), `style.css`, and `app.js` for maintainability
 - [x] **Ansible role scaffolding** and **multi-file dependency awareness** — opt-in detection of related scripts (Bash/csh, Perl, PowerShell) sourcing/calling each other, grouped via union-find into orchestrator/member roles and restructured into an AAP project layout (`roles/<name>/tasks/main.yml`, `playbooks/`, `collections/requirements.yml`)
+- [x] **Export to ZIP** — hand-rolled ZIP writer (store method, no JSZip) bundles converted file(s), tests, and docs into a single download; for grouped AAP role output it's also the only path to get `roles/`/`playbooks/`/`collections/` out on non-Chromium browsers, since directory-write needs the File System Access API
 
 ### Up next
 
-- [ ] **Export to ZIP** — bundle converted file(s), tests, and docs into a single downloadable `.zip`; also the only path to get grouped AAP role output (`roles/`/`playbooks/`/`collections/`) out on non-Chromium browsers, since directory-write today needs the File System Access API
 - [ ] **Export to PR** — push converted output to a GitHub branch via the API and open a PR; server-side via `launch.py` so a token never sits in browser storage
 - [ ] **Before/after parity check** and **test execution harness** — require a script execution environment; planned for the Node.js version
 

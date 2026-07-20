@@ -54,7 +54,7 @@
 | 12 | **Annotation mode** — inline comments in converted output explaining why each mapping was made; toggleable on/off | High | 🟢 Easy |
 | 13 | **Confidence scoring per task** — each converted Ansible task gets a green/amber/red confidence indicator based on how direct the mapping was | Medium | 🟡 Medium |
 | 14 | **Conversion history** — session-scoped log of every script processed with ability to flip back to a previous result without re-running | Medium | 🟡 Medium |
-| 15 | **Export to ZIP** — bundle converted file(s), tests, and docs into a single downloadable `.zip`; for grouped/AAP-role output this is the only way to get the `roles/`/`playbooks/`/`collections/` layout out on Firefox/Safari, since directory-write today requires the Chromium-only File System Access API | High | 🟡 Medium |
+| 15 | **Export to ZIP** — bundle converted file(s), tests, and docs into a single downloadable `.zip`; for grouped/AAP-role output this is the only way to get the `roles/`/`playbooks/`/`collections/` layout out on Firefox/Safari, since directory-write today requires the Chromium-only File System Access API | High | ✅ Done |
 | 19 | **Export to PR** — push converted output to a GitHub branch via the API and open a PR | Low | 🔴 Hard |
 
 ---
@@ -90,7 +90,7 @@
 | 9 | Test coverage report | New output tab; post-test-generation assessment prompt |
 | 13 | Confidence scoring per task | Parse converted YAML, score each task block, render inline badges |
 | 14 | Conversion history | Session state array + history dropdown; no backend needed |
-| 15 | Export to ZIP | Hand-rolled ZIP writer (store method, local file headers + CRC32, no JSZip) to stay dependency-free; bundles single-file output or the full `roles/`/`playbooks/`/`collections/` AAP layout; no backend needed |
+| 15 | ~~Export to ZIP~~ | ✅ Done — hand-rolled ZIP writer (store method, local file headers + CRC32, no JSZip); bundles single-file output or the full `roles/`/`playbooks/`/`collections/` AAP layout, mirroring the existing disk-write path exactly |
 
 ### 🔴 Hard — Requires backend, Docker, or architectural changes
 
