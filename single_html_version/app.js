@@ -1182,12 +1182,126 @@ function setOutput(tab, text, prose) {
     db.onclick = toggleDiffView;
     acts.appendChild(db);
     if (diffOpen) document.getElementById('diff-converted').textContent = text;
+    if (mode === 'single') {
+      const zb = document.createElement('button'); zb.className = 'btn btn-sm'; zb.textContent = '⬇ Export ZIP';
+      zb.onclick = exportSingleZip;
+      acts.appendChild(zb);
+    }
   }
+}
+
+function exportSingleZip() {
+  const ext = TGT_EXT[document.getElementById('tgt-lang').value] || 'txt';
+  const testExt = { python3: 'py', go: '_test.go' }[document.getElementById('tgt-lang').value] || 'sh';
+  const placeholder = t => !t || t.includes('will appear here');
+  const docs = document.getElementById('out-docs').textContent;
+  const tests = document.getElementById('out-tests').textContent;
+  const converted = document.getElementById('out-converted').textContent;
+  const entries = [];
+  if (!placeholder(docs)) entries.push({ path: 'rosetta_docs.txt', content: docs });
+  if (!placeholder(tests)) entries.push({ path: 'rosetta_test.' + testExt, content: tests });
+  if (!placeholder(converted)) entries.push({ path: 'rosetta_converted.' + ext, content: converted });
+  if (!entries.length) return;
+  downloadZip(entries, 'rosetta_export.zip');
 }
 
 function downloadText(text, filename) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ─── Minimal ZIP writer (store method, no compression) ────────────
+// No external dependency (no JSZip) — a hand-rolled writer keeps the
+// app's "no other global dependencies" claim true for air-gapped use.
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function dosDateTime(d) {
+  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  return { date: date & 0xFFFF, time: time & 0xFFFF };
+}
+// entries: [{ path: 'roles/foo/tasks/main.yml', content: 'text' }, ...]
+function buildZip(entries) {
+  const enc = new TextEncoder();
+  const { date: dosDate, time: dosTime } = dosDateTime(new Date());
+  const localChunks = [], centralChunks = [];
+  let offset = 0;
+
+  entries.forEach(({ path, content }) => {
+    const nameBytes = enc.encode(path);
+    const dataBytes = enc.encode(content);
+    const crc = crc32(dataBytes);
+    const size = dataBytes.length;
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);   // local file header signature
+    local.setUint16(4, 20, true);           // version needed
+    local.setUint16(6, 0, true);            // flags
+    local.setUint16(8, 0, true);            // method: 0 = store
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, size, true);        // compressed size
+    local.setUint32(22, size, true);        // uncompressed size
+    local.setUint16(26, nameBytes.length, true);
+    local.setUint16(28, 0, true);           // extra field length
+    localChunks.push(new Uint8Array(local.buffer), nameBytes, dataBytes);
+
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014b50, true); // central directory signature
+    central.setUint16(4, 20, true);         // version made by
+    central.setUint16(6, 20, true);         // version needed
+    central.setUint16(8, 0, true);          // flags
+    central.setUint16(10, 0, true);         // method: store
+    central.setUint16(12, dosTime, true);
+    central.setUint16(14, dosDate, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, size, true);
+    central.setUint32(24, size, true);
+    central.setUint16(28, nameBytes.length, true);
+    central.setUint16(30, 0, true);         // extra field length
+    central.setUint16(32, 0, true);         // comment length
+    central.setUint16(34, 0, true);         // disk number start
+    central.setUint16(36, 0, true);         // internal attrs
+    central.setUint32(38, 0, true);         // external attrs
+    central.setUint32(42, offset, true);    // local header offset
+    centralChunks.push(new Uint8Array(central.buffer), nameBytes);
+
+    offset += 30 + nameBytes.length + size;
+  });
+
+  const centralStart = offset;
+  centralChunks.forEach(c => { offset += c.length; });
+  const centralSize = offset - centralStart;
+
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);       // end of central directory signature
+  end.setUint16(4, 0, true);                // disk number
+  end.setUint16(6, 0, true);                // disk with central dir
+  end.setUint16(8, entries.length, true);   // entries on this disk
+  end.setUint16(10, entries.length, true);  // total entries
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, centralStart, true);
+  end.setUint16(20, 0, true);               // comment length
+
+  return new Blob([...localChunks, ...centralChunks, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+function downloadZip(entries, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(buildZip(entries));
   a.download = filename; a.click(); URL.revokeObjectURL(a.href);
 }
 function showComplexity(score, label, level) {
@@ -1465,7 +1579,7 @@ async function saveGroupedOutput(baseName, rel, content) {
   } catch (e) { console.warn('Grouped save failed:', e); }
 }
 
-async function writeCollectionsRequirements(root, allConvertedText) {
+function buildCollectionsRequirementsContent(allConvertedText) {
   const found = new Set();
   const re = /\b([a-z0-9_]+\.[a-z0-9_]+)\.[a-z0-9_]+\b/g;
   let m;
@@ -1473,10 +1587,14 @@ async function writeCollectionsRequirements(root, allConvertedText) {
   const lines = ['---', 'collections:'];
   if (found.size) [...found].sort().forEach(ns => lines.push(`  - name: ${ns}`));
   else lines.push('  # No additional collections required — only ansible.builtin (bundled with ansible-core) was used.');
+  return lines.join('\n') + '\n';
+}
+
+async function writeCollectionsRequirements(root, allConvertedText) {
   try {
     const dir = await root.getDirectoryHandle('collections', { create: true });
     const fh = await dir.getFileHandle('requirements.yml', { create: true });
-    const w = await fh.createWritable(); await w.write(lines.join('\n') + '\n'); await w.close();
+    const w = await fh.createWritable(); await w.write(buildCollectionsRequirementsContent(allConvertedText)); await w.close();
   } catch (e) { console.warn('collections/requirements.yml save failed:', e); }
 }
 
@@ -2472,6 +2590,35 @@ function exportSummaryCSV() {
   const rows = [['File', 'Level', 'Score', 'Conversion', 'Issues']];
   batchResults.forEach(r => { const c = r.complexity || {}; rows.push([r.name, c.level || '', c.score || 0, c.manual_required ? 'Partial+TODOs' : 'Automated', (c.issues || []).join(' | ')]); });
   downloadText(rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n'), 'rosetta_summary.csv');
+}
+
+// Mirrors the on-disk layout from saveFile/saveGroupedOutput — same
+// roles/<name>/tasks/main.yml + playbooks/ + collections/requirements.yml
+// structure, just zipped instead of written via the File System Access API,
+// so it also works on Firefox/Safari or with no output directory chosen.
+function exportBatchZip() {
+  const tgt = document.getElementById('tgt-lang').value;
+  const ext = TGT_EXT[tgt] || 'txt';
+  const testExt = { python3: 'py', go: '_test.go' }[tgt] || 'sh';
+  const entries = [];
+  const convertedTexts = [];
+  batchResults.forEach(r => {
+    if (r.converted === undefined) return; // errored or skipped — nothing to bundle
+    const base = r.name.replace(/\.[^.]+$/, '');
+    const qf = queue.find(f => f.name === r.name);
+    const rel = qf && qf.relationship;
+    entries.push({ path: base + '_docs.txt', content: r.docs });
+    entries.push({ path: base + '_test.' + testExt, content: r.tests });
+    if (rel && rel.role === 'member') entries.push({ path: `roles/${rel.roleName}/tasks/main.yml`, content: r.converted });
+    else if (rel && rel.role === 'orchestrator') entries.push({ path: `playbooks/${base}.yml`, content: r.converted });
+    else entries.push({ path: base + '.' + ext, content: r.converted });
+    convertedTexts.push(r.converted);
+  });
+  if (!entries.length) return;
+  if (tgt === 'ansible' && queue.some(f => f.relationship)) {
+    entries.push({ path: 'collections/requirements.yml', content: buildCollectionsRequirementsContent(convertedTexts.join('\n')) });
+  }
+  downloadZip(entries, 'rosetta_batch_export.zip');
 }
 
 // ─── Diagnostics ──────────────────────────────────────────────────
