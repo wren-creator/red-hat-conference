@@ -32,8 +32,8 @@
 |---|---|---|---|
 | 5 | **Variable extraction pass** — dedicated pre-conversion step identifying all hardcoded values and proposing a variable naming scheme before conversion | High | ✅ Done |
 | 6 | **Idempotency scoring** — post-conversion assessment of how idempotent the Ansible output actually is; flags tasks that remain imperative | High | 🟢 Easy |
-| 7 | **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for scripts above a complexity threshold | Medium | 🔴 Hard |
-| 8 | **Multi-file dependency awareness** — detect that script B sources script A during batch processing and convert them together rather than independently | Medium | 🔴 Hard |
+| 7 | **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for scripts above a complexity threshold | Medium | ✅ Done |
+| 8 | **Multi-file dependency awareness** — detect that script B sources script A during batch processing and convert them together rather than independently | Medium | ✅ Done |
 
 ---
 
@@ -96,8 +96,8 @@
 |---|---|---|
 | 1 | Script chunking | Requires semantic section detection + stitching logic; hardest problem on the list |
 | 2 | Conversion validation | `ansible-lint` needs a runtime; best solved in Claude Code / Node.js version |
-| 7 | Ansible role scaffolding | Multi-file output; requires File System Access API + role directory builder |
-| 8 | Multi-file dependency awareness | Requires cross-file analysis during batch; significant pipeline change |
+| 7 | ~~Ansible role scaffolding~~ | ✅ Done — related-script detection groups output into `roles/<name>/tasks/main.yml` AAP layout |
+| 8 | ~~Multi-file dependency awareness~~ | ✅ Done — union-find grouping of sourced/called scripts into orchestrator/member roles |
 | 10 | Before/after parity check | Needs script execution environment; Docker or VM |
 | 11 | Test execution harness | Docker-based runner; backend work |
 | 15 | Export to PR | GitHub API integration; needs auth and token handling |

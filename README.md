@@ -244,7 +244,7 @@ Extended documentation lives in the `docs/` directory:
 
 See `docs/ROADMAP.md` for the full prioritized list.
 
-### Completed (15 of 18 roadmap items)
+### Completed (17 of 18 roadmap items)
 
 - [x] **WMI/CIM detection** — real-time pre-flight scan flags `Get-WmiObject` / `Get-CimInstance` before conversion runs
 - [x] **Windows credential handling** — detects `Get-Credential`, `PSCredential`, `ConvertTo-SecureString`; maps to Ansible Vault references with setup TODOs
@@ -261,12 +261,11 @@ See `docs/ROADMAP.md` for the full prioritized list.
 - [x] **Script chunking** — scripts over ~1,500 tokens are automatically split into chunks, processed section by section, and merged; transparent to the user
 - [x] **Ansible Automation Platform (AAP) compatibility** — all converted Ansible output uses FQCN module names (`ansible.builtin.*`), populates `vars:` from extracted variables, generates handlers for service operations, and includes a project layout comment for AAP deployment
 - [x] **Codebase restructure** — split from a 2,599-line monolith into `index.html` (markup), `style.css`, and `app.js` for maintainability
+- [x] **Ansible role scaffolding** and **multi-file dependency awareness** — opt-in detection of related scripts (Bash/csh, Perl, PowerShell) sourcing/calling each other, grouped via union-find into orchestrator/member roles and restructured into an AAP project layout (`roles/<name>/tasks/main.yml`, `playbooks/`, `collections/requirements.yml`)
 
 ### Up next
 
-- [ ] **Ansible role scaffolding** — output a proper role directory structure (`tasks/`, `vars/`, `handlers/`, `defaults/`) for complex scripts
 - [ ] **Export to ZIP / PR** — bundle converted file, test script, and docs for download or push directly to a GitHub branch
-- [ ] **Multi-file dependency awareness** — detect sourced scripts during batch processing and convert them together
 - [ ] **Before/after parity check** and **test execution harness** — require a script execution environment; planned for the Node.js version
 
 ### Known Limitations
