@@ -8,8 +8,8 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
-    "dotenv": "^16.3.1",
+    "dotenv": "^18.0.9",
     "express": "^5.2.1",
-    "multer": "^2.4.0"
+    "multer": "^2.5.0"
   }
 }
