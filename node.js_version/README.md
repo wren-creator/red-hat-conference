@@ -8,6 +8,7 @@ Works in every browser: Chrome, Firefox, Safari, Edge.
 ## Project layout
 
   server.js          — Express server (AI proxy, file I/O, directory scanning)
+  server.sh          — start/stop/status/restart wrapper around npm start
   public/index.html  — Frontend (served by the Node server)
   package.json       — Dependencies (express, dotenv, multer)
   .env.example       — Copy to .env and fill in your API key
@@ -26,9 +27,26 @@ Works in every browser: Chrome, Firefox, Safari, Edge.
 
   3. Start the server
        npm start
+       # or: ./server.sh start
 
   4. Open in any browser
        http://localhost:3000
+
+---
+
+## server.sh (start/stop/status/restart)
+
+Runs the server in the background with a pidfile, so you don't have to hunt
+down a stray process by hand when something's already bound to the port.
+
+  ./server.sh start     — starts in the background, refuses to clobber a
+                           port already held by something else
+  ./server.sh status    — reports running/not running + pid
+  ./server.sh stop      — stops it, cleans up the pidfile
+  ./server.sh restart   — stop, then start
+
+Logs go to .server.log (git-ignored). Set PORT if you're not using the
+default 3000.
 
 ---
 
