@@ -1,3 +1,5 @@
 .DS_Store
 **/.DS_Store
 node.js_version/.env
+node.js_version/.server.pid
+node.js_version/.server.log
